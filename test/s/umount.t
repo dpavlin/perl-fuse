@@ -2,6 +2,8 @@
 use test::helper qw($_point $_real $_pidfile);
 use strict;
 use Test::More tests => 1;
-system("umount $_point");
-ok(1,"unmount");
+use POSIX qw(WEXITSTATUS);
+#system("umount $_point");
+system("fusermount -u $_point");
+ok(POSIX::WEXITSTATUS($?) == 0,"unmount");
 system("rm -rf $_real $_pidfile");

@@ -7,7 +7,7 @@ use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT);
 use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET);
 require 'syscall.ph'; # for SYS_mknod and SYS_lchown
 
-sub fixup { return "/tmp/fusetest" . shift }
+sub fixup { return "/tmp/fusetest-" . $ENV{LOGNAME} . shift }
 
 sub x_getattr {
 	my ($file) = fixup(shift);

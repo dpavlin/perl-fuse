@@ -9,6 +9,8 @@ if(!fork()) {
 	#close(STDIN);
 	close(STDOUT);
 	close(STDERR);
+	mkdir $_point;
+	mkdir $_real;
 	`echo $$ >test/s/mounted.pid`;
 	exec("perl $_loop $_point");
 	exit(1);
