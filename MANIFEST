@@ -1,3 +1,4 @@
+AUTHORS
 Changes
 Fuse.pm
 Fuse.xs
@@ -6,3 +7,29 @@ MANIFEST
 README
 test.pl
 META.yml                                 Module meta-data (added by MakeMaker)
+test/helper.pm
+test/s/umount.t
+test/s/mount.t
+test/test-template
+test/chmod.t
+test/chown.t
+test/getattr.t
+test/getdir.t
+test/link.t
+test/mkdir.t
+test/mknod.t
+test/open.t
+test/readlink.t
+test/read.t
+test/rename.t
+test/rmdir.t
+test/statfs.t
+test/symlink.t
+test/truncate.t
+test/unlink.t
+test/utime.t
+test/write.t
+examples/example.pl
+examples/loopback.pl
+examples/rmount_remote.pl
+examples/rmount.pl
