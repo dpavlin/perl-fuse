@@ -98,7 +98,7 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	if(prv) {
 		rv = POPi;
 		while(--prv)
-			dirfil(dirh,POPp,0,0);
+			dirfil(dirh,POPp,0);
 	} else {
 		fprintf(stderr,"getdir() handler returned nothing!\n");
 		rv = -ENOSYS;
