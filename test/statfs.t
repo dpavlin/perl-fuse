@@ -3,14 +3,14 @@ use test::helper qw($_real $_point);
 use Test::More;
 require 'syscall.ph'; # for SYS_statfs
 plan tests => 7;
-my ($statfs_data) = "    " x 10;
+my ($statfs_data) = "        " x 16;
 my ($tmp) = $_point;
 ok(!syscall(&SYS_statfs,$tmp,$statfs_data),"statfs");
 # FIXME: this is soooooo linux-centric.  perhaps parse the output of /bin/df?
-my @list = unpack("LSSL8",$statfs_data);
+my @list = unpack("L!7L2L!7",$statfs_data);
+print join(', ', @list)."\n";
 shift(@list);
 is(shift(@list),4096,"block size");
-shift(@list);
 is(shift(@list),1000000,"blocks");
 is(shift(@list),500000,"blocks free");
 shift(@list);
