@@ -10,3 +10,8 @@ Revision history for Perl extension Fuse.
 0.03 Wed Dec 5 02:17:52 2001
     - changed getattr() to smell like perl's stat()
 	- fleshed out the documentation a bit
+
+0.04 Thu Nov 18 13:51:56 CET 2004
+    - new maintainer, Dobrica Pavlinusic <dpavlin@rot13.org>
+    - updated to work with current CVS version of fuse
+

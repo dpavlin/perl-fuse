@@ -2,7 +2,7 @@
 #include "perl.h"
 #include "XSUB.h"
 
-#include <fuse.h>
+#include <fuse/fuse.h>
 
 #undef DEBUGf
 #if 0
@@ -101,7 +101,7 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	if(prv) {
 		rv = POPi;
 		while(--prv)
-			dirfil(dirh,POPp,0);
+			dirfil(dirh,POPp,0,0);
 	} else {
 		fprintf(stderr,"getdir() handler returned nothing!\n");
 		rv = -ENOSYS;
