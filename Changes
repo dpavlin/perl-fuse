@@ -15,3 +15,6 @@ Revision history for Perl extension Fuse.
     - new maintainer, Dobrica Pavlinusic <dpavlin@rot13.org>
     - updated to work with current CVS version of fuse
 
+0.06 Sun Apr 03 16:15:00 BST 2005
+    - Add support for operations supported by FUSE 2.2.1
+      (flush, release, fsync, extended attributes)
