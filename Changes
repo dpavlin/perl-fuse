@@ -18,3 +18,4 @@ Revision history for Perl extension Fuse.
 0.06 Sun Apr 03 16:15:00 BST 2005
     - Add support for operations supported by FUSE 2.2.1
       (flush, release, fsync, extended attributes)
+    - add mount options
