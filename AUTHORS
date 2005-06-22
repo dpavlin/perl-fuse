@@ -1,5 +1,7 @@
 Perl bindings
 -------------
 
-Mark Glines        <mark@glines.org>
-Dobrica Pavlinusic <dpavlin@rot13.org>
+Mark Glines <mark@glines.org> - original author of perl bindings
+Dobrica Pavlinusic <dpavlin@rot13.org> - current maintainer
+Richard Dawe <rich@phekda.gotadsl.co.uk> - lot of improvements
+Mark Wilkinson <mark.wilkinson@2pmtech.com> - added mount options	

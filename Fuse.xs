@@ -777,19 +777,21 @@ perl_fuse_main(...)
 	struct fuse_operations fops = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 	int i, fd, varnum = 0, debug, have_mnt;
 	char *mountpoint;
+	char *mountopts;
 	STRLEN n_a;
 	STRLEN l;
 	INIT:
-	if(items != 27) {
+	if(items != 28) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
 		XSRETURN_UNDEF;
 	}
 	CODE:
 	debug = SvIV(ST(0));
 	mountpoint = SvPV_nolen(ST(1));
+	mountopts = SvPV_nolen(ST(2));
 	/* FIXME: reevaluate multithreading support when perl6 arrives */
 	for(i=0;i<N_CALLBACKS;i++) {
-		SV *var = ST(i+2);
+		SV *var = ST(i+3);
 		if((var != &PL_sv_undef) && SvROK(var)) {
 			if(SvTYPE(SvRV(var)) == SVt_PVCV) {
 				void **tmp1 = (void**)&_available_ops, **tmp2 = (void**)&fops;
@@ -800,7 +802,7 @@ perl_fuse_main(...)
 		}
 	}
 	/* FIXME: need to pass fusermount arguments */
-	fd = fuse_mount(mountpoint,NULL);
+	fd = fuse_mount(mountpoint,mountopts);
 	if(fd < 0)
 		croak("could not mount fuse filesystem!");
 	fuse_loop(fuse_new(fd,debug ? "debug" : NULL,&fops));

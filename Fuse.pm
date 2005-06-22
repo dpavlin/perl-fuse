@@ -81,9 +81,11 @@ sub main {
 	my (@names) = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
 			 rename link chmod chown truncate utime open read write statfs
 			 flush release fsync setxattr getxattr listxattr removexattr);
+	my (@validOpts) = qw(allow_other);
 	my ($tmp) = 0;
 	my (%mapping) = map { $_ => $tmp++ } (@names);
-	my (%otherargs) = (debug=>0, mountpoint=>"");
+	my (%optmap) = map { $_ => 1 } (@validOpts);
+	my (%otherargs) = (debug=>0, mountpoint=>"", mountopts=>"");
 	while(my $name = shift) {
 		my ($subref) = shift;
 		if(exists($otherargs{$name})) {
@@ -96,7 +98,12 @@ sub main {
 			$subs[$mapping{$name}] = $subref;
 		}
 	}
-	perl_fuse_main($otherargs{debug},$otherargs{mountpoint},@subs);
+        foreach my $opt ( split(/,/,$otherargs{mountopts}) ) {
+          if ( ! exists($optmap{$opt}) ) {
+            croak "Use of an invalid mountopt argument";
+          }
+        }
+	perl_fuse_main($otherargs{debug},$otherargs{mountpoint},$otherargs{mountopts},@subs);
 }
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
@@ -171,6 +178,22 @@ mountpoint => string
 
 The point at which to mount this filesystem.  There is no default, you must
 specify this.  An example would be '/mnt'.
+
+=back
+
+mountopts => string
+
+=over 1
+
+This is a comma seperated list of mount options to pass to the FUSE kernel
+module.
+
+At present, it allows the specification of the allow_other
+argument when mounting the new FUSE filesystem. To use this, you will also
+need 'user_allow_other' in /etc/fuse.conf as per the FUSE documention
+
+  mountopts => "allow_other" or
+  mountopts => ""
 
 =back
 
