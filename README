@@ -1,8 +1,16 @@
-Fuse version 0.05
+Fuse version 0.06
 =================
 
-This is a test release.  It seems to work quite well.  In fact, I can't
-find any problems with it whatsoever.  If you do, I want to know.
+Fuse is combination of Linux kernel module and user space library which
+enables you to write user-space filesystems. This module enables you to
+write filesystems using perl.
+
+Additional file-systems using Fuse module are released on CPAN using Fuse::
+namespace. Currently that includes only Fuse::DBI which allows you to mount
+database as file system, but there will be more.
+
+This is a pre-production release.  It seems to work quite well.  In fact, I
+can't find any problems with it whatsoever.  If you do, I want to know.
 
 
 INSTALLATION
