@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 
 use strict;
 use Fuse;
@@ -63,9 +63,8 @@ sub x_write {
 
 sub err { return (-shift || -$!) }
 
-sub x_readlink { return readlink(fixup(shift)                 ); }
-sub x_unlink { return unlink(fixup(shift)) ? 0 : -$!;          }
-sub x_rmdir { return err(rmdir(fixup(shift))               ); }
+sub x_readlink { return readlink(fixup(shift));         }
+sub x_unlink   { return unlink(fixup(shift)) ? 0 : -$!; }
 
 sub x_symlink { print "symlink\n"; return symlink(shift,fixup(shift)) ? 0 : -$!; }
 
@@ -115,22 +114,23 @@ my ($mountpoint) = "";
 $mountpoint = shift(@ARGV) if @ARGV;
 Fuse::main(
 	mountpoint=>$mountpoint,
-	getattr=>\&x_getattr,
-	readlink=>\&x_readlink,
-	getdir=>\&x_getdir,
-	mknod=>\&x_mknod,
-	mkdir=>\&x_mkdir,
-	unlink=>\&x_unlink,
-	rmdir=>\&x_rmdir,
-	symlink=>\&x_symlink,
-	rename=>\&x_rename,
-	link=>\&x_link,
-	chmod=>\&x_chmod,
-	chown=>\&x_chown,
-	truncate=>\&x_truncate,
-	utime=>\&x_utime,
-	open=>\&x_open,
-	read=>\&x_read,
-	write=>\&x_write,
-	statfs=>\&x_statfs,
+	getattr =>"main::x_getattr",
+	readlink=>"main::x_readlink",
+	getdir  =>"main::x_getdir",
+	mknod   =>"main::x_mknod",
+	mkdir   =>"main::x_mkdir",
+	unlink  =>"main::x_unlink",
+	rmdir   =>"main::x_rmdir",
+	symlink =>"main::x_symlink",
+	rename  =>"main::x_rename",
+	link    =>"main::x_link",
+	chmod   =>"main::x_chmod",
+	chown   =>"main::x_chown",
+	truncate=>"main::x_truncate",
+	utime   =>"main::x_utime",
+	open    =>"main::x_open",
+	read    =>"main::x_read",
+	write   =>"main::x_write",
+	statfs  =>"main::x_statfs",
+	threaded=>0,
 );

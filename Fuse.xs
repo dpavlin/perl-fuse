@@ -2,11 +2,36 @@
 #include "perl.h"
 #include "XSUB.h"
 
+#ifdef USE_ITHREADS
+# ifdef I_PTHREAD
+/* perl implements threads with pthread.  So, we use the pthread API for
+ * handling thread-local storage. */
+#  include <pthread.h>
+PerlInterpreter *master_interp = NULL;
+static inline void create_perl_context() {
+	if(master_interp) {
+		PerlInterpreter *me = PERL_GET_CONTEXT;
+		if(!me) {
+			PERL_SET_CONTEXT(master_interp);
+			me = perl_clone(master_interp, CLONEf_CLONE_HOST);
+		}
+	}
+}
+#  define FUSE_CONTEXT_PRE create_perl_context(); {
+#  define FUSE_CONTEXT_POST }
+#  define FUSE_USE_ITHREADS
+# else
+#  error "Sorry, I don't know how to handle ithreads on this architecture."
+# endif
+#else
+# define FUSE_CONTEXT_PRE
+# define FUSE_CONTEXT_POST
+#endif
 #include <fuse/fuse.h>
 
 #undef DEBUGf
 #if 0
-#define DEBUGf(f, a...) fprintf(stderr, "%s:%d (%i): " f,__BASE_FILE__,__LINE__,PL_stack_sp-PL_stack_base ,##a )
+#define DEBUGf(f, a...) fprintf(stderr, "%s:%d (%i): " f,__BASE_FILE__,__LINE__,sp-PL_stack_base ,##a )
 #else
 #define DEBUGf(a...)
 #endif
@@ -15,8 +40,10 @@
 SV *_PLfuse_callbacks[N_CALLBACKS];
 
 int _PLfuse_getattr(const char *file, struct stat *result) {
-	dSP;
 	int rv, statcount;
+	FUSE_CONTEXT_PRE;
+	dSP;
+	DEBUGf("getattr begin: %s\n",file);
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -51,16 +78,20 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
+	DEBUGf("getattr end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_readlink(const char *file,char *buf,size_t buflen) {
 	int rv;
 	char *rvstr;
-	dSP;
 	I32 ax;
+	FUSE_CONTEXT_PRE;
+	dSP;
 	if(buflen < 1)
 		return EINVAL;
+	DEBUGf("readlink begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -83,12 +114,16 @@ int _PLfuse_readlink(const char *file,char *buf,size_t buflen) {
 	LEAVE;
 	buf[buflen-1] = 0;
 	PUTBACK;
+	DEBUGf("readlink end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	int prv, rv;
+	FUSE_CONTEXT_PRE;
 	dSP;
+	DEBUGf("getdir begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -107,6 +142,8 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
+	DEBUGf("getdir end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -114,7 +151,9 @@ int _PLfuse_mknod (const char *file, mode_t mode, dev_t dev) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
+	DEBUGf("mknod begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -131,6 +170,8 @@ int _PLfuse_mknod (const char *file, mode_t mode, dev_t dev) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
+	DEBUGf("mknod end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -138,8 +179,9 @@ int _PLfuse_mkdir (const char *file, mode_t mode) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("mkdir begin: %i\n",sp-PL_stack_base);
+	DEBUGf("mkdir begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -155,7 +197,8 @@ int _PLfuse_mkdir (const char *file, mode_t mode) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("mkdir end: %i %i\n",sp-PL_stack_base,rv);
+	DEBUGf("mkdir end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -164,8 +207,9 @@ int _PLfuse_unlink (const char *file) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("unlink begin: %i\n",sp-PL_stack_base);
+	DEBUGf("unlink begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -180,7 +224,8 @@ int _PLfuse_unlink (const char *file) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("unlink end: %i\n",sp-PL_stack_base);
+	DEBUGf("unlink end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -188,8 +233,9 @@ int _PLfuse_rmdir (const char *file) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("rmdir begin: %i\n",sp-PL_stack_base);
+	DEBUGf("rmdir begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -204,7 +250,8 @@ int _PLfuse_rmdir (const char *file) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("rmdir end: %i %i\n",sp-PL_stack_base,rv);
+	DEBUGf("rmdir end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -212,8 +259,9 @@ int _PLfuse_symlink (const char *file, const char *new) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("symlink begin: %i\n",sp-PL_stack_base);
+	DEBUGf("symlink begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -229,7 +277,8 @@ int _PLfuse_symlink (const char *file, const char *new) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("symlink end: %i\n",sp-PL_stack_base);
+	DEBUGf("symlink end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -237,8 +286,9 @@ int _PLfuse_rename (const char *file, const char *new) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("rename begin: %i\n",sp-PL_stack_base);
+	DEBUGf("rename begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -254,7 +304,8 @@ int _PLfuse_rename (const char *file, const char *new) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("rename end: %i\n",sp-PL_stack_base);
+	DEBUGf("rename end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -262,8 +313,9 @@ int _PLfuse_link (const char *file, const char *new) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("link begin: %i\n",sp-PL_stack_base);
+	DEBUGf("link begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -279,7 +331,8 @@ int _PLfuse_link (const char *file, const char *new) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("link end: %i\n",sp-PL_stack_base);
+	DEBUGf("link end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -287,8 +340,9 @@ int _PLfuse_chmod (const char *file, mode_t mode) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("chmod begin: %i\n",sp-PL_stack_base);
+	DEBUGf("chmod begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -304,7 +358,8 @@ int _PLfuse_chmod (const char *file, mode_t mode) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("chmod end: %i\n",sp-PL_stack_base);
+	DEBUGf("chmod end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -312,8 +367,9 @@ int _PLfuse_chown (const char *file, uid_t uid, gid_t gid) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("chown begin: %i\n",sp-PL_stack_base);
+	DEBUGf("chown begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -330,7 +386,8 @@ int _PLfuse_chown (const char *file, uid_t uid, gid_t gid) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("chown end: %i\n",sp-PL_stack_base);
+	DEBUGf("chown end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -338,8 +395,9 @@ int _PLfuse_truncate (const char *file, off_t off) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("truncate begin: %i\n",sp-PL_stack_base);
+	DEBUGf("truncate begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -355,7 +413,8 @@ int _PLfuse_truncate (const char *file, off_t off) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("truncate end: %i\n",sp-PL_stack_base);
+	DEBUGf("truncate end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -363,8 +422,9 @@ int _PLfuse_utime (const char *file, struct utimbuf *uti) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("utime begin: %i\n",sp-PL_stack_base);
+	DEBUGf("utime begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -381,7 +441,8 @@ int _PLfuse_utime (const char *file, struct utimbuf *uti) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("utime end: %i\n",sp-PL_stack_base);
+	DEBUGf("utime end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -389,8 +450,9 @@ int _PLfuse_open (const char *file, int flags) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("open begin: %i\n",sp-PL_stack_base);
+	DEBUGf("open begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -406,15 +468,17 @@ int _PLfuse_open (const char *file, int flags) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("open end: %i %i\n",sp-PL_stack_base,rv);
+	DEBUGf("open end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("read begin: %i\n",sp-PL_stack_base);
+	DEBUGf("read begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -437,7 +501,7 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off) {
 				rv = 0;
 			}
 			if(rv > buflen)
-				croak("read() handler returned more than buflen! (%i > %i)",rv,buflen);
+				croak("%i: read() handler returned more than buflen! (%i > %i)",getpid(),rv,buflen);
 			if(rv)
 				memcpy(buf,SvPV_nolen(mysv),rv);
 		}
@@ -445,15 +509,17 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("read end: %i %i\n",sp-PL_stack_base,rv);
+	DEBUGf("read end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("write begin: %i\n",sp-PL_stack_base);
+	DEBUGf("write begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -470,15 +536,17 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off) 
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("write end: %i\n",sp-PL_stack_base);
+	DEBUGf("write end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_statfs (const char *file, struct statfs *st) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("statfs begin: %i\n",sp-PL_stack_base);
+	DEBUGf("statfs begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -507,15 +575,17 @@ int _PLfuse_statfs (const char *file, struct statfs *st) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("statfs end: %i\n",sp-PL_stack_base);
+	DEBUGf("statfs end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_flush (const char *file) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("flush begin: %i\n",sp-PL_stack_base);
+	DEBUGf("flush begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -530,15 +600,17 @@ int _PLfuse_flush (const char *file) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("flush end: %i\n",sp-PL_stack_base);
+	DEBUGf("flush end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_release (const char *file, int flags) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("release begin: %i\n",sp-PL_stack_base);
+	DEBUGf("release begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -554,15 +626,17 @@ int _PLfuse_release (const char *file, int flags) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("release end: %i\n",sp-PL_stack_base);
+	DEBUGf("release end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_fsync (const char *file, int flags) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("fsync begin: %i\n",sp-PL_stack_base);
+	DEBUGf("fsync begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -578,15 +652,17 @@ int _PLfuse_fsync (const char *file, int flags) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("fsync end: %i\n",sp-PL_stack_base);
+	DEBUGf("fsync end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_t buflen, int flags) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("setxattr begin: %i\n",sp-PL_stack_base);
+	DEBUGf("setxattr begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -604,15 +680,17 @@ int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("setxattr end: %i\n",sp-PL_stack_base);
+	DEBUGf("setxattr end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t buflen) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("getxattr begin: %i\n",sp-PL_stack_base);
+	DEBUGf("getxattr begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -647,15 +725,17 @@ int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t bufl
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("getxattr end: %i\n",sp-PL_stack_base);
+	DEBUGf("getxattr end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_listxattr (const char *file, char *list, size_t size) {
 	int prv, rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("listxattr begin: %i\n",sp-PL_stack_base);
+	DEBUGf("listxattr begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -712,15 +792,17 @@ int _PLfuse_listxattr (const char *file, char *list, size_t size) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("listxattr end: %i\n",sp-PL_stack_base);
+	DEBUGf("listxattr end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
 int _PLfuse_removexattr (const char *file, const char *name) {
 	int rv;
 	char *rvstr;
+	FUSE_CONTEXT_PRE;
 	dSP;
-	DEBUGf("removexattr begin: %i\n",sp-PL_stack_base);
+	DEBUGf("removexattr begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
@@ -736,7 +818,8 @@ int _PLfuse_removexattr (const char *file, const char *name) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("removexattr end: %i\n",sp-PL_stack_base);
+	DEBUGf("removexattr end: %i\n",rv);
+	FUSE_CONTEXT_POST;
 	return rv;
 }
 
@@ -775,34 +858,48 @@ void
 perl_fuse_main(...)
 	PREINIT:
 	struct fuse_operations fops = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
-	int i, fd, varnum = 0, debug, have_mnt;
+	int i, fd, varnum = 0, debug, threaded, have_mnt;
 	char *mountpoint;
 	char *mountopts;
 	STRLEN n_a;
 	STRLEN l;
 	INIT:
-	if(items != 28) {
+	if(items != 29) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
 		XSRETURN_UNDEF;
 	}
 	CODE:
 	debug = SvIV(ST(0));
-	mountpoint = SvPV_nolen(ST(1));
-	mountopts = SvPV_nolen(ST(2));
-	/* FIXME: reevaluate multithreading support when perl6 arrives */
+	threaded = SvIV(ST(1));
+	if(threaded) {
+#ifdef FUSE_USE_ITHREADS
+		master_interp = PERL_GET_INTERP;
+#else
+		fprintf(stderr,"FUSE warning: Your script has requested multithreaded "
+		               "mode, but your perl was not built with -Dusethreads.  "
+		               "Threads are disabled.\n");
+		threaded = 0;
+#endif
+	}
+	mountpoint = SvPV_nolen(ST(2));
+	mountopts = SvPV_nolen(ST(3));
 	for(i=0;i<N_CALLBACKS;i++) {
-		SV *var = ST(i+3);
-		if((var != &PL_sv_undef) && SvROK(var)) {
-			if(SvTYPE(SvRV(var)) == SVt_PVCV) {
-				void **tmp1 = (void**)&_available_ops, **tmp2 = (void**)&fops;
-				tmp2[i] = tmp1[i];
-				_PLfuse_callbacks[i] = var;
-			} else
-				croak("arg is not a code reference!");
+		SV *var = ST(i+4);
+        /* allow symbolic references, or real code references. */
+		if((var != &PL_sv_undef) && (SvPOK(var) || (SvROK(var) && SvTYPE(SvRV(var)) == SVt_PVCV))) {
+			void **tmp1 = (void**)&_available_ops, **tmp2 = (void**)&fops;
+			tmp2[i] = tmp1[i];
+			if(threaded)
+                /* note: under 5.8.7, this croaks for code references. */
+                SvSHARE(var);
+			_PLfuse_callbacks[i] = var;
 		}
 	}
 	/* FIXME: need to pass fusermount arguments */
 	fd = fuse_mount(mountpoint,mountopts);
 	if(fd < 0)
 		croak("could not mount fuse filesystem!");
-	fuse_loop(fuse_new(fd,debug ? "debug" : NULL,&fops));
+	if(threaded) {
+		fuse_loop_mt(fuse_new(fd,debug ? "debug" : NULL,&fops));
+	} else
+		fuse_loop(fuse_new(fd,debug ? "debug" : NULL,&fops));

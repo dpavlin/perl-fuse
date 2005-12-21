@@ -85,16 +85,14 @@ sub main {
 	my ($tmp) = 0;
 	my (%mapping) = map { $_ => $tmp++ } (@names);
 	my (%optmap) = map { $_ => 1 } (@validOpts);
-	my (%otherargs) = (debug=>0, mountpoint=>"", mountopts=>"");
+	my (%otherargs) = (debug=>0, threaded=>0, mountpoint=>"", mountopts=>"");
 	while(my $name = shift) {
 		my ($subref) = shift;
 		if(exists($otherargs{$name})) {
 			$otherargs{$name} = $subref;
 		} else {
 			croak "There is no function $name" unless exists($mapping{$name});
-			croak "Usage: Fuse::main(getattr => &my_getattr, ...)" unless $subref;
-			croak "Usage: Fuse::main(getattr => &my_getattr, ...)" unless ref($subref);
-			croak "Usage: Fuse::main(getattr => &my_getattr, ...)" unless ref($subref) eq "CODE";
+			croak "Usage: Fuse::main(getattr => \"main::my_getattr\", ...)" unless $subref;
 			$subs[$mapping{$name}] = $subref;
 		}
 	}
@@ -103,7 +101,7 @@ sub main {
             croak "Use of an invalid mountopt argument";
           }
         }
-	perl_fuse_main($otherargs{debug},$otherargs{mountpoint},$otherargs{mountopts},@subs);
+	perl_fuse_main($otherargs{debug},$otherargs{threaded},$otherargs{mountpoint},$otherargs{mountopts},@subs);
 }
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
@@ -120,7 +118,7 @@ Fuse - write filesystems in Perl using FUSE
   use Fuse;
   my ($mountpoint) = "";
   $mountpoint = shift(@ARGV) if @ARGV;
-  Fuse::main(mountpoint=>$mountpoint, getattr=>\&my_getattr, getdir=>\&my_getdir, ...);
+  Fuse::main(mountpoint=>$mountpoint, getattr=>"main::my_getattr", getdir=>"main::my_getdir", ...);
 
 =head1 DESCRIPTION
 
@@ -128,9 +126,6 @@ This lets you implement filesystems in perl, through the FUSE
 (Filesystem in USErspace) kernel/lib interface.
 
 FUSE expects you to implement callbacks for the various functions.
-
-NOTE:  I have only tested the things implemented in example.pl!
-It should work, but some things may not.
 
 In the following definitions, "errno" can be 0 (for a success),
 -EINVAL, -ENOENT, -EONFIRE, any integer less than 1 really.
@@ -197,23 +192,30 @@ need 'user_allow_other' in /etc/fuse.conf as per the FUSE documention
 
 =back
 
-unthreaded => boolean
+threaded => boolean
 
 =over 1
 
-This turns FUSE multithreading off and on.  NOTE: This perlmodule does not
-currently work properly in multithreaded mode!  The author is unfortunately
-not familiar enough with perl-threads internals, and according to the
-documentation available at time of writing (2002-03-08), those internals are
-subject to changing anyway.  Note that singlethreaded mode also means that
-you will not have to worry about reentrancy, though you will have to worry
-about recursive lookups (since the kernel holds a global lock on your
-filesystem and blocks waiting for one callback to complete before calling
-another).
+This turns FUSE multithreading on and off.  The default is 0, meaning your FUSE
+script will run in single-threaded mode.  Note that single-threaded mode also
+means that you will not have to worry about reentrancy, though you will have to
+worry about recursive lookups.  In single-threaded mode, FUSE holds a global
+lock on your filesystem, and will wait for one callback to return before
+calling another.  This can lead to deadlocks, if your script makes any attempt
+to access files or directories in the filesystem it is providing.  (This
+includes calling stat() on the mount-point, statfs() calls from the 'df'
+command, and so on and so forth.)  It is worth paying a little attention and
+being careful about this.
 
-I hope to add full multithreading functionality later, but for now, I
-recommend you leave this option at the default, 1 (which means
-unthreaded, no threads will be used and no reentrancy is needed).
+Enabling multithreading will cause FUSE to make multiple simultaneous calls
+into the various callback functions of your perl script.  If you enable 
+threaded mode, you can enjoy all the parallel execution and interactive
+response benefits of threads, and you get to enjoy all the benefits of race
+conditions and locking bugs, too.  Please also ensure any other perl modules
+you're using are also thread-safe.
+
+(If enabled, this option will cause a warning if your perl interpreter was not
+built with USE_ITHREADS.)
 
 =back
 

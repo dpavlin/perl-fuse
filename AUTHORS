@@ -1,7 +1,7 @@
 Perl bindings
 -------------
 
-Mark Glines <mark@glines.org> - original author of perl bindings
+Mark Glines <mark@glines.org> - original author of perl bindings, ithreads
 Dobrica Pavlinusic <dpavlin@rot13.org> - current maintainer
 Richard Dawe <rich@phekda.gotadsl.co.uk> - lot of improvements
 Mark Wilkinson <mark.wilkinson@2pmtech.com> - added mount options	

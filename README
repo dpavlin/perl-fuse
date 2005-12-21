@@ -25,8 +25,11 @@ To install this module type the standard commands as root:
 
 DEPENDENCIES
 
-This module requires the FUSE userspace library and the FUSE kernel module.
+This module requires the FUSE C library and the FUSE kernel module.
 See http://fuse.sourceforge.net/
+
+If you intend to use FUSE in threaded mode, you need a version of Perl which
+has been compiled with USE_ITHREADS.
 
 
 COPYRIGHT AND LICENCE
@@ -63,16 +66,17 @@ subdirectory.  These are:
 
 BUGS
 
-I've begun to build a formal testing framework.  Currently it can mount
-and unmount loopback.pl, and all of the base-level functions have test
-scripts.  These need to be fleshed out as problems are noticed.
+Perl 5.8.7 does not support shared subroutine references.  Until this is
+fixed, if you use threaded mode, you need to use symbolic references (i.e.
+passing "main::cb" instead of \&cb).  This rules out closures, lexical
+subs and that sort of thing, but it does seem to work.
 
 The current test framework seems to work well, but the underlying mount/
-unmount infrastructure is a crock.  I am not pleased with that code.
+unmount infrastructure is a crock.  I am not pleased with that code.  I
+also wish there was a way to test without root permissions.
 
 While most things work, I do still have a TODO list:
 * "du -sb" reports a couple orders of magnitude too large a size.
 * need to sort out cleaner mount semantics for the test framework
 * figure out how to un-linuxcentrify the statfs tests
 * test everything on other architectures and OS's
-

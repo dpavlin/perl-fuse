@@ -35,8 +35,8 @@ is(-z "$a", -z "$b", '-z'); # 27
 my (@astat, @bstat);
 @astat = stat("$a");
 @bstat = stat("$b");
-# dev and inode can legally change
-shift(@astat); shift(@astat);
-shift(@bstat); shift(@bstat);
+# dev, inode and blksize can legally change
+@astat = @astat[2..10,12];
+@bstat = @bstat[2..10,12];
 is(join(" ",@astat),join(" ",@bstat),"stat()");
 `rm -f $a`;
