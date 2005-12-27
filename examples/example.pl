@@ -1,4 +1,5 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
+use strict;
 
 use Fuse;
 use POSIX qw(ENOENT EISDIR EINVAL);
@@ -81,10 +82,10 @@ my ($mountpoint) = "";
 $mountpoint = shift(@ARGV) if @ARGV;
 Fuse::main(
 	mountpoint=>$mountpoint,
-	getattr=>\&e_getattr,
-	getdir=>\&e_getdir,
-	open=>\&e_open,
-	statfs=>\&e_statfs,
-	read=>\&e_read,
-	#debug=>1, threaded=>0
+	getattr=>"main::e_getattr",
+	getdir =>"main::e_getdir",
+	open   =>"main::e_open",
+	statfs =>"main::e_statfs",
+	read   =>"main::e_read",
+	threaded=>0
 );

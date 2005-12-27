@@ -12,7 +12,7 @@ if(!fork()) {
 	mkdir $_point;
 	mkdir $_real;
 	`echo $$ >test/s/mounted.pid`;
-	exec("perl $_loop $_point");
+	exec("perl -Iblib/lib -Iblib/arch $_loop $_point");
 	exit(1);
 }
 select(undef, undef, undef, 0.5);

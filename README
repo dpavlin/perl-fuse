@@ -29,7 +29,8 @@ This module requires the FUSE C library and the FUSE kernel module.
 See http://fuse.sourceforge.net/
 
 If you intend to use FUSE in threaded mode, you need a version of Perl which
-has been compiled with USE_ITHREADS.
+has been compiled with USE_ITHREADS.  Then, you need to use threads and
+threads::shared.
 
 
 COPYRIGHT AND LICENCE
@@ -66,14 +67,15 @@ subdirectory.  These are:
 
 BUGS
 
-Perl 5.8.7 does not support shared subroutine references.  Until this is
-fixed, if you use threaded mode, you need to use symbolic references (i.e.
-passing "main::cb" instead of \&cb).  This rules out closures, lexical
-subs and that sort of thing, but it does seem to work.
+At time of writing, Perl (5.8.7) did not support shared subroutine references.
+Symptoms include a cryptic error message like "Invalid value for shared scalar"
+from Fuse.pm.  Until this is fixed, if you use threaded mode, you need to use
+symbolic references (i.e. passing "main::cb" instead of \&cb).  This doesn't
+allow things like closures, lexical subs and that sort of thing, but it does
+work for me.
 
 The current test framework seems to work well, but the underlying mount/
-unmount infrastructure is a crock.  I am not pleased with that code.  I
-also wish there was a way to test without root permissions.
+unmount infrastructure is a crock.  I am not pleased with that code.
 
 While most things work, I do still have a TODO list:
 * "du -sb" reports a couple orders of magnitude too large a size.

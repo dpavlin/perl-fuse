@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
-
 use strict;
+
 use Fuse;
 use IO::File;
 use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT);

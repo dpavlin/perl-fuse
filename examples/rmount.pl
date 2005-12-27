@@ -1,5 +1,6 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 
+# This example needs some work before it can support threads.
 use strict;
 use Net::SSH 'sshopen2';
 use IPC::Open2;
@@ -49,22 +50,21 @@ sub netlink {
 	my ($str) = Dumper(\@_)."\n";
 	$str = sprintf("%08i\n%s",length($str),$str);
 	while(1) { # retry as necessary
-		my ($sig) = $SIG{ALRM};
 		my ($VAR1);
 		$VAR1 = undef;
 		eval {
-			$SIG{ALRM} = sub { die "timeout\n" };
+			local $SIG{ALRM} = sub { die "timeout\n" };
 			alarm 10;
 			print WRITER $str;
 			my ($len, $data);
-			if(read(READER,$len,9) == 9) {
-				read(READER,$data,$len-length($data),length($data))
+			$data = '';
+			if(sysread(READER,$len,9) == 9) {
+				sysread(READER,$data,$len-length($data),length($data))
 					while(length($data) < $len);
 				eval $data;
 			}
+			alarm 0;
 		};
-		alarm 0;
-		$SIG{ALRM} = $sig;
 		if(defined $VAR1) {
 			return wantarray ? @{$VAR1} : $$VAR1[0];
 		}

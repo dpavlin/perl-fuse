@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use Errno;
 use Carp;
+use Config;
 
 require Exporter;
 require DynaLoader;
@@ -20,17 +21,14 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(FUSE_DEBUG XATTR_CREATE XATTR_REPLACE) ],
-		    'debug' => [ qw(FUSE_DEBUG) ],
+		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE) ],
 		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ]
 		    );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-our @EXPORT = qw(
-	FUSE_DEBUG
-);
-our $VERSION = '0.06';
+our @EXPORT = ();
+our $VERSION = '0.07';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -77,7 +75,9 @@ sub XATTR_REPLACE {
 bootstrap Fuse $VERSION;
 
 sub main {
-	my (@subs) = (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+	my (@subs) = (undef,undef,undef,undef,undef,undef,undef,undef,undef,undef,
+	              undef,undef,undef,undef,undef,undef,undef,undef,undef,undef,
+	              undef,undef,undef,undef,undef);
 	my (@names) = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
 			 rename link chmod chown truncate utime open read write statfs
 			 flush release fsync setxattr getxattr listxattr removexattr);
@@ -96,12 +96,31 @@ sub main {
 			$subs[$mapping{$name}] = $subref;
 		}
 	}
-        foreach my $opt ( split(/,/,$otherargs{mountopts}) ) {
-          if ( ! exists($optmap{$opt}) ) {
-            croak "Use of an invalid mountopt argument";
-          }
-        }
-	perl_fuse_main($otherargs{debug},$otherargs{threaded},$otherargs{mountpoint},$otherargs{mountopts},@subs);
+	foreach my $opt ( split(/,/,$otherargs{mountopts}) ) {
+		if ( ! exists($optmap{$opt}) ) {
+			croak "Use of an invalid mountopt argument";
+		}
+	}
+	if($otherargs{threaded}) {
+		# make sure threads are both available, and loaded.
+		if($Config{useithreads}) {
+			if(exists($threads::{VERSION})) {
+				if(exists($threads::shared::{VERSION})) {
+					# threads will work.
+				} else {
+					carp("Thread support requires you to use threads::shared.\nThreads are disabled.\n");
+					$otherargs{threaded} = 0;
+				}
+			} else {
+				carp("Thread support requires you to use threads and threads::shared.\nThreads are disabled.\n");
+				$otherargs{threaded} = 0;
+			}
+		} else {
+			carp("Thread support was not compiled into this build of perl.\nThreads are disabled.\n");
+			$otherargs{threaded} = 0;
+		}
+	}
+ 	perl_fuse_main($otherargs{debug},$otherargs{threaded},$otherargs{mountpoint},$otherargs{mountopts},@subs);
 }
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
@@ -139,12 +158,9 @@ See their respective documentations, for more information.
 
 =head2 EXPORTED SYMBOLS
 
-FUSE_DEBUG by default.
+None by default.
 
 You can request all exportable symbols by using the tag ":all".
-
-You can request all debug symbols by using the tag ":debug".
-This will export FUSE_DEBUG.
 
 You can request the extended attribute symbols by using the tag ":xattr".
 This will export XATTR_CREATE and XATTR_REPLACE.
@@ -215,7 +231,8 @@ conditions and locking bugs, too.  Please also ensure any other perl modules
 you're using are also thread-safe.
 
 (If enabled, this option will cause a warning if your perl interpreter was not
-built with USE_ITHREADS.)
+built with USE_ITHREADS, or if you have failed to use threads or
+threads::shared.)
 
 =back
 

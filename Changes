@@ -19,3 +19,23 @@ Revision history for Perl extension Fuse.
     - Add support for operations supported by FUSE 2.2.1
       (flush, release, fsync, extended attributes)
     - add mount options
+
+0.07 Sun Dec 25 10:37:00 PST 2005
+    - Remove the FUSE_DEBUG constant; we never actually implemented
+      it to begin with.
+    - "make test" now uses the version of Fuse you've just built,
+      not the one installed in /usr/lib/perl5.
+    - getattr test now allows blksize to vary between host and fuse
+      fs, as this is not a bug.
+    - Add experimental support for threading.  The following minor
+      API changes accommodate this:
+    - The nonexistent (yet documented) "unthreaded=>1" attribute
+      has been replaced with the "threaded=>1" attribute, and this
+      time it actually exists.
+    - Symbolic refs like "main::e_getattr" are now allowed for
+      callbacks, because threaded mode needs to share() the
+      callbacks, yet perl 5.8.7 does not allow share()ing code
+      refs yet.  Direct code-refs are still supported as much
+      as possible (currently, non-threaded mode).
+    - testsuite uses a multithreaded loopback.pl, when available.
+    - Update docs accordingly.  Update examples accordingly.

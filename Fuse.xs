@@ -501,7 +501,7 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off) {
 				rv = 0;
 			}
 			if(rv > buflen)
-				croak("%i: read() handler returned more than buflen! (%i > %i)",getpid(),rv,buflen);
+				croak("read() handler returned more than buflen! (%i > %i)",rv,buflen);
 			if(rv)
 				memcpy(buf,SvPV_nolen(mysv),rv);
 		}
@@ -857,7 +857,9 @@ PROTOTYPES: DISABLE
 void
 perl_fuse_main(...)
 	PREINIT:
-	struct fuse_operations fops = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
+	struct fuse_operations fops = 
+		{NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+		 NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 	int i, fd, varnum = 0, debug, threaded, have_mnt;
 	char *mountpoint;
 	char *mountopts;
@@ -885,14 +887,21 @@ perl_fuse_main(...)
 	mountopts = SvPV_nolen(ST(3));
 	for(i=0;i<N_CALLBACKS;i++) {
 		SV *var = ST(i+4);
-        /* allow symbolic references, or real code references. */
-		if((var != &PL_sv_undef) && (SvPOK(var) || (SvROK(var) && SvTYPE(SvRV(var)) == SVt_PVCV))) {
+		/* allow symbolic references, or real code references. */
+		if(SvOK(var) && (SvPOK(var) || (SvROK(var) && SvTYPE(SvRV(var)) == SVt_PVCV))) {
 			void **tmp1 = (void**)&_available_ops, **tmp2 = (void**)&fops;
 			tmp2[i] = tmp1[i];
+#ifdef FUSE_USE_ITHREADS
 			if(threaded)
                 /* note: under 5.8.7, this croaks for code references. */
                 SvSHARE(var);
+#endif
 			_PLfuse_callbacks[i] = var;
+		} else
+		if(SvOK(var)) {
+			croak("invalid callback passed to perl_fuse_main "
+			      "(%s is not a string, code ref, or undef).\n",
+			      i+4,SvPVbyte_nolen(var));
 		}
 	}
 	/* FIXME: need to pass fusermount arguments */

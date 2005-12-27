@@ -2,11 +2,13 @@
 package test::helper;
 use strict;
 use Exporter;
+use Config;
 use POSIX qw(WEXITSTATUS);
 our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 @ISA = "Exporter";
 @EXPORT_OK = qw($_loop $_point $_pidfile $_real);
-our($_loop, $_point, $_pidfile, $_real) = ("examples/loopback.pl","/tmp/fusemnt-".$ENV{LOGNAME},"test/s/mounted.pid","/tmp/fusetest-".$ENV{LOGNAME});
+our($_loop, $_point, $_pidfile, $_real) = ("","/tmp/fusemnt-".$ENV{LOGNAME},"test/s/mounted.pid","/tmp/fusetest-".$ENV{LOGNAME});
+$_loop = $Config{useithreads} ? "examples/loopback_t.pl" : "examples/loopback.pl";
 if($0 !~ qr|s/u?mount\.t$|) {
 	my ($reject) = 1;
 	if(-f $_pidfile) {
