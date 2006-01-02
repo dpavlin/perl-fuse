@@ -30,7 +30,7 @@ static inline void create_perl_context() {
 #include <fuse/fuse.h>
 
 #undef DEBUGf
-#if 0
+#if 1
 #define DEBUGf(f, a...) fprintf(stderr, "%s:%d (%i): " f,__BASE_FILE__,__LINE__,sp-PL_stack_base ,##a )
 #else
 #define DEBUGf(a...)
@@ -554,7 +554,8 @@ int _PLfuse_statfs (const char *file, struct statvfs *st) {
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[17],G_ARRAY);
 	SPAGAIN;
-	if(rv > 5) {
+	DEBUGf("statfs got %i params\n",rv);
+	if(rv == 6 || rv == 7) {
 		st->f_bsize    = POPi;
 		st->f_bfree = st->f_bavail = POPi;
 		st->f_blocks   = POPi;
@@ -566,7 +567,7 @@ int _PLfuse_statfs (const char *file, struct statvfs *st) {
 		st->f_fsid = 0;
 		st->f_flag = 0;
 
-		if(rv > 6)
+		if(rv == 7)
 			rv = POPi;
 		else
 			rv = 0;
