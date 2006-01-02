@@ -1,13 +1,19 @@
 #!/usr/bin/perl -w
 use strict;
 
+use blib;
 use Fuse;
 use IO::File;
 use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT);
 use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET);
 require 'syscall.ph'; # for SYS_mknod and SYS_lchown
 
-sub fixup { return "/tmp/fusetest-" . $ENV{LOGNAME} . shift }
+my $tmp_path = "/tmp/fusetest-" . $ENV{LOGNAME};
+if (! -e $tmp_path) {
+	mkdir($tmp_path) || die "can't create $tmp_path: $!";
+}
+
+sub fixup { return $tmp_path . shift }
 
 sub x_getattr {
 	my ($file) = fixup(shift);
@@ -133,4 +139,5 @@ Fuse::main(
 	write   =>"main::x_write",
 	statfs  =>"main::x_statfs",
 	threaded=>0,
+	debug => 1,
 );
