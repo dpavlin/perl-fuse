@@ -541,7 +541,8 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off) 
 	return rv;
 }
 
-int _PLfuse_statfs (const char *file, struct statfs *st) {
+/* FIXME check for old fuse API (< 21?) and use statfs here */
+int _PLfuse_statfs (const char *file, struct statvfs *st) {
 	int rv;
 	char *rvstr;
 	FUSE_CONTEXT_PRE;
@@ -555,11 +556,16 @@ int _PLfuse_statfs (const char *file, struct statfs *st) {
 	SPAGAIN;
 	if(rv > 5) {
 		st->f_bsize    = POPi;
-		st->f_bfree    = POPi;
+		st->f_bfree = st->f_bavail = POPi;
 		st->f_blocks   = POPi;
-		st->f_ffree    = POPi;
+		st->f_ffree = st->f_favail  = POPi;
 		st->f_files    = POPi;
-		st->f_namelen  = POPi;
+		st->f_namemax  = POPi;
+		/* zero all other */
+		st->f_frsize = 4096;
+		st->f_fsid = 0;
+		st->f_flag = 0;
+
 		if(rv > 6)
 			rv = POPi;
 		else
