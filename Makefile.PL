@@ -11,7 +11,7 @@ WriteMakefile(
     'LIBS'		=> [''], # e.g., '-lm'
     'DEFINE'		=> '-g -ggdb', # e.g., '-DHAVE_SOMETHING'
 	# Insert -I. if you add *.h files later:
-    'INC'		=> '-I../include', # e.g., '-I/usr/include/other'
+    'INC'		=> `pkg-config --cflags` . '-I ../include', # e.g., '-I/usr/include/other'
 	# Un-comment this if you add C files to link with later:
-    'OBJECT'		=> 'Fuse.o -lfuse -lpthread', # link all the C files too
+    'OBJECT'		=> `pkg-config --libs fuse` . ' Fuse.o -lpthread', # link all the C files too
 );
