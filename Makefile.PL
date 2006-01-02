@@ -1,6 +1,10 @@
 use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
+
+my $inc = `pkg-config --cflags` || '-I ../include';
+my $obj = `pkg-config --libs fuse` || '-lfuse';
+ 
 WriteMakefile(
     'NAME'		=> 'Fuse',
     'VERSION_FROM'	=> 'Fuse.pm', # finds $VERSION
@@ -11,7 +15,7 @@ WriteMakefile(
     'LIBS'		=> [''], # e.g., '-lm'
     'DEFINE'		=> '-g -ggdb', # e.g., '-DHAVE_SOMETHING'
 	# Insert -I. if you add *.h files later:
-    'INC'		=> `pkg-config --cflags` . '-I ../include', # e.g., '-I/usr/include/other'
+    'INC'		=> $inc, # e.g., '-I/usr/include/other'
 	# Un-comment this if you add C files to link with later:
-    'OBJECT'		=> `pkg-config --libs fuse` . ' Fuse.o -lpthread', # link all the C files too
+    'OBJECT'		=> "$obj Fuse.o -lpthread", # link all the C files too
 );
