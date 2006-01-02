@@ -19,3 +19,12 @@ WriteMakefile(
 	# Un-comment this if you add C files to link with later:
     'OBJECT'		=> "$obj Fuse.o -lpthread", # link all the C files too
 );
+
+sub MY::postamble {
+    return <<'MAKE_MORE';
+
+sf:
+	svn2cvs.pl file:///home/dpavlin/.svk/fuse/perl-llin :ext:dpavlin@cvs.sourceforge.net:/cvsroot/fuse perl
+
+MAKE_MORE
+};
