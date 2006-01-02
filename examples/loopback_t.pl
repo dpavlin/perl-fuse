@@ -3,6 +3,7 @@ use strict;
 use threads;
 use threads::shared;
 
+use blib;
 use Fuse;
 use IO::File;
 use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT);
