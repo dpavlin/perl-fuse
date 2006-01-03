@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 
+use blib;
 use Fuse;
 use POSIX qw(ENOENT EISDIR EINVAL);
 
