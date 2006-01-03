@@ -39,3 +39,4 @@ Revision history for Perl extension Fuse.
       as possible (currently, non-threaded mode).
     - testsuite uses a multithreaded loopback.pl, when available.
     - Update docs accordingly.  Update examples accordingly.
+    - Works on FreeBSD with fuse4bsd http://fuse4bsd.creo.hu/
