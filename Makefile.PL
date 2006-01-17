@@ -2,7 +2,7 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 
-my $inc = `pkg-config --cflags` || '-I ../include -D_FILE_OFFSET_BITS=64';
+my $inc = '-DFUSE_USE_VERSION=25 ' . `pkg-config --cflags fuse` || '-I ../include -D_FILE_OFFSET_BITS=64';
 my $obj = `pkg-config --libs fuse` || '-lfuse';
  
 WriteMakefile(

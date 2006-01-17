@@ -27,7 +27,7 @@ static inline void create_perl_context() {
 # define FUSE_CONTEXT_PRE
 # define FUSE_CONTEXT_POST
 #endif
-#include <fuse/fuse.h>
+#include <fuse.h>
 
 #undef DEBUGf
 #if 0
@@ -119,6 +119,13 @@ int _PLfuse_readlink(const char *file,char *buf,size_t buflen) {
 	return rv;
 }
 
+#if 0
+/*
+ * This doesn't yet work... we alwas get ENOSYS when trying to use readdir().
+ * Well, of course, getdir() is fine as well.
+ */
+ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil, off_t off, struct fuse_file_info *fi) {
+#endif
 int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	int prv, rv;
 	FUSE_CONTEXT_PRE;
@@ -134,7 +141,7 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	if(prv) {
 		rv = POPi;
 		while(--prv)
-			dirfil(dirh,POPp,0);
+			dirfil(dirh,POPp,0,0);
 	} else {
 		fprintf(stderr,"getdir() handler returned nothing!\n");
 		rv = -ENOSYS;
@@ -446,10 +453,11 @@ int _PLfuse_utime (const char *file, struct utimbuf *uti) {
 	return rv;
 }
 
-int _PLfuse_open (const char *file, int flags) {
+int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	int rv;
 	SV *rvsv;
 	char *rvstr;
+	int flags = fi->flags;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("open begin\n");
@@ -473,7 +481,7 @@ int _PLfuse_open (const char *file, int flags) {
 	return rv;
 }
 
-int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off) {
+int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct fuse_file_info *fi) {
 	int rv;
 	char *rvstr;
 	FUSE_CONTEXT_PRE;
@@ -514,7 +522,7 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off) {
 	return rv;
 }
 
-int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off) {
+int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, struct fuse_file_info *fi) {
 	int rv;
 	char *rvstr;
 	FUSE_CONTEXT_PRE;
@@ -541,14 +549,7 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off) 
 	return rv;
 }
 
-/* FIXME check for old fuse API (< 21?) and use statfs here */
-#ifdef __FreeBSD__
- #define _fuse_statvfs statfs
-#else
- #define _fuse_statvfs statvfs
-#endif
-int _PLfuse_statfs (const char *file, struct _fuse_statvfs *st) {
-
+int _PLfuse_statfs (const char *file, struct statvfs *st) {
 	int rv;
 	char *rvstr;
 	FUSE_CONTEXT_PRE;
@@ -568,14 +569,12 @@ int _PLfuse_statfs (const char *file, struct _fuse_statvfs *st) {
 		st->f_ffree	= POPi;
 		st->f_files	= POPi;
 		st->f_namemax	= POPi;
-#ifndef __FreeBSD__
 		/* zero and fill-in other */
 		st->f_fsid = 0;
 		st->f_frsize = 4096;
 		st->f_flag = 0;
 		st->f_bavail = st->f_bfree;
 		st->f_favail = st->f_ffree;
-#endif
 
 		if(rv == 7)
 			rv = POPi;
@@ -597,7 +596,7 @@ int _PLfuse_statfs (const char *file, struct _fuse_statvfs *st) {
 	return rv;
 }
 
-int _PLfuse_flush (const char *file) {
+int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 	int rv;
 	char *rvstr;
 	FUSE_CONTEXT_PRE;
@@ -622,9 +621,10 @@ int _PLfuse_flush (const char *file) {
 	return rv;
 }
 
-int _PLfuse_release (const char *file, int flags) {
+int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	int rv;
 	char *rvstr;
+	int flags = fi->flags;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("release begin\n");
@@ -648,9 +648,10 @@ int _PLfuse_release (const char *file, int flags) {
 	return rv;
 }
 
-int _PLfuse_fsync (const char *file, int flags) {
+int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	int rv;
 	char *rvstr;
+	int flags = fi->flags;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("fsync begin\n");
@@ -844,6 +845,9 @@ struct fuse_operations _available_ops = {
 getattr:		_PLfuse_getattr,
 readlink:		_PLfuse_readlink,
 getdir:			_PLfuse_getdir,
+#if 0
+readdir:		_PLfuse_readdir,
+#endif
 mknod:			_PLfuse_mknod,
 mkdir:			_PLfuse_mkdir,
 unlink:			_PLfuse_unlink,
@@ -880,6 +884,8 @@ perl_fuse_main(...)
 	int i, fd, varnum = 0, debug, threaded, have_mnt;
 	char *mountpoint;
 	char *mountopts;
+	struct fuse_args margs = FUSE_ARGS_INIT(0, NULL);
+	struct fuse_args fargs = FUSE_ARGS_INIT(0, NULL);
 	STRLEN n_a;
 	STRLEN l;
 	INIT:
@@ -921,11 +927,30 @@ perl_fuse_main(...)
 			      i+4,SvPVbyte_nolen(var));
 		}
 	}
-	/* FIXME: need to pass fusermount arguments */
-	fd = fuse_mount(mountpoint,mountopts);
+	/*
+	 * XXX: What comes here is just a ridiculous use of the option parsing API
+	 * to hack on compatibility with other parts of the new API. First and
+	 * foremost, real C argc/argv would be good to get at...
+	 */
+	if (mountopts &&
+	    (fuse_opt_add_arg(&margs, "") == -1 ||
+	     fuse_opt_add_arg(&margs, "-o") == -1 ||
+	     fuse_opt_add_arg(&margs, mountopts) == -1)) {
+		fuse_opt_free_args(&margs);
+		croak("out of memory\n");
+	}
+	fd = fuse_mount(mountpoint,&margs);
+	fuse_opt_free_args(&margs);        
 	if(fd < 0)
 		croak("could not mount fuse filesystem!");
+        if (debug &&
+	    (fuse_opt_add_arg(&fargs, "") == -1 ||
+	     fuse_opt_add_arg(&fargs, "-d") == -1)) {
+		fuse_opt_free_args(&fargs);
+		croak("out of memory\n");
+	}
 	if(threaded) {
-		fuse_loop_mt(fuse_new(fd,debug ? "debug" : NULL,&fops));
+		fuse_loop_mt(fuse_new(fd,&fargs,&fops,sizeof(fops)/sizeof(void*)));
 	} else
-		fuse_loop(fuse_new(fd,debug ? "debug" : NULL,&fops));
+		fuse_loop(fuse_new(fd,&fargs,&fops,sizeof(fops)/sizeof(void*)));
+	fuse_opt_free_args(&fargs);
