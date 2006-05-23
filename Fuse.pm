@@ -75,17 +75,16 @@ sub XATTR_REPLACE {
 bootstrap Fuse $VERSION;
 
 sub main {
-	my (@subs) = (undef,undef,undef,undef,undef,undef,undef,undef,undef,undef,
-	              undef,undef,undef,undef,undef,undef,undef,undef,undef,undef,
-	              undef,undef,undef,undef,undef);
-	my (@names) = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
-			 rename link chmod chown truncate utime open read write statfs
-			 flush release fsync setxattr getxattr listxattr removexattr);
-	my (@validOpts) = qw(allow_other);
-	my ($tmp) = 0;
-	my (%mapping) = map { $_ => $tmp++ } (@names);
-	my (%optmap) = map { $_ => 1 } (@validOpts);
-	my (%otherargs) = (debug=>0, threaded=>0, mountpoint=>"", mountopts=>"");
+	my @names = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
+			rename link chmod chown truncate utime open read write statfs
+			flush release fsync setxattr getxattr listxattr removexattr);
+	my @subs = map {undef} @names;
+	my @validOpts = qw(ro allow_other default_permissions fsname use_ino);
+	my $tmp = 0;
+	my %mapping = map { $_ => $tmp++ } @names;
+	my %optmap  = map { $_ => 1 } @validOpts;
+	my @otherargs = qw(debug threaded mountpoint mountopts);
+	my %otherargs = (debug=>0, threaded=>0, mountpoint=>"", mountopts=>"");
 	while(my $name = shift) {
 		my ($subref) = shift;
 		if(exists($otherargs{$name})) {
@@ -96,10 +95,9 @@ sub main {
 			$subs[$mapping{$name}] = $subref;
 		}
 	}
-	foreach my $opt ( split(/,/,$otherargs{mountopts}) ) {
-		if ( ! exists($optmap{$opt}) ) {
-			croak "Use of an invalid mountopt argument";
-		}
+	foreach my $opt ( map {m/^([^=]*)/; $1} split(/,/,$otherargs{mountopts}) ) {
+	  next if exists($optmap{$opt});
+	  croak "Fuse::main: invalid '$opt' argument in mountopts";
 	}
 	if($otherargs{threaded}) {
 		# make sure threads are both available, and loaded.
@@ -120,7 +118,7 @@ sub main {
 			$otherargs{threaded} = 0;
 		}
 	}
- 	perl_fuse_main($otherargs{debug},$otherargs{threaded},$otherargs{mountpoint},$otherargs{mountopts},@subs);
+	perl_fuse_main(@otherargs{@otherargs},@subs);
 }
 
 # Autoload methods go after =cut, and are processed by the autosplit program.

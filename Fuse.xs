@@ -40,7 +40,7 @@ static inline void create_perl_context() {
 SV *_PLfuse_callbacks[N_CALLBACKS];
 
 int _PLfuse_getattr(const char *file, struct stat *result) {
-	int rv, statcount;
+	int rv;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("getattr begin: %s\n",file);
@@ -71,7 +71,7 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 		result->st_uid = POPi;
 		result->st_nlink = POPi;
 		result->st_mode = POPi;
-		/*result->st_ino =*/ POPi;
+		result->st_ino   = POPi;
 		result->st_dev = POPi;
 		rv = 0;
 	}
@@ -85,8 +85,6 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 
 int _PLfuse_readlink(const char *file,char *buf,size_t buflen) {
 	int rv;
-	char *rvstr;
-	I32 ax;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	if(buflen < 1)
@@ -156,8 +154,6 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 
 int _PLfuse_mknod (const char *file, mode_t mode, dev_t dev) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("mknod begin\n");
@@ -184,8 +180,6 @@ int _PLfuse_mknod (const char *file, mode_t mode, dev_t dev) {
 
 int _PLfuse_mkdir (const char *file, mode_t mode) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("mkdir begin\n");
@@ -212,8 +206,6 @@ int _PLfuse_mkdir (const char *file, mode_t mode) {
 
 int _PLfuse_unlink (const char *file) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("unlink begin\n");
@@ -238,8 +230,6 @@ int _PLfuse_unlink (const char *file) {
 
 int _PLfuse_rmdir (const char *file) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("rmdir begin\n");
@@ -264,8 +254,6 @@ int _PLfuse_rmdir (const char *file) {
 
 int _PLfuse_symlink (const char *file, const char *new) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("symlink begin\n");
@@ -291,8 +279,6 @@ int _PLfuse_symlink (const char *file, const char *new) {
 
 int _PLfuse_rename (const char *file, const char *new) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("rename begin\n");
@@ -318,8 +304,6 @@ int _PLfuse_rename (const char *file, const char *new) {
 
 int _PLfuse_link (const char *file, const char *new) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("link begin\n");
@@ -345,8 +329,6 @@ int _PLfuse_link (const char *file, const char *new) {
 
 int _PLfuse_chmod (const char *file, mode_t mode) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("chmod begin\n");
@@ -372,8 +354,6 @@ int _PLfuse_chmod (const char *file, mode_t mode) {
 
 int _PLfuse_chown (const char *file, uid_t uid, gid_t gid) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("chown begin\n");
@@ -400,8 +380,6 @@ int _PLfuse_chown (const char *file, uid_t uid, gid_t gid) {
 
 int _PLfuse_truncate (const char *file, off_t off) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("truncate begin\n");
@@ -427,8 +405,6 @@ int _PLfuse_truncate (const char *file, off_t off) {
 
 int _PLfuse_utime (const char *file, struct utimbuf *uti) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("utime begin\n");
@@ -455,8 +431,6 @@ int _PLfuse_utime (const char *file, struct utimbuf *uti) {
 
 int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	int rv;
-	SV *rvsv;
-	char *rvstr;
 	int flags = fi->flags;
 	FUSE_CONTEXT_PRE;
 	dSP;
@@ -483,7 +457,6 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 
 int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct fuse_file_info *fi) {
 	int rv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("read begin\n");
@@ -524,7 +497,6 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct 
 
 int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, struct fuse_file_info *fi) {
 	int rv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("write begin\n");
@@ -551,7 +523,6 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 
 int _PLfuse_statfs (const char *file, struct statvfs *st) {
 	int rv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("statfs begin\n");
@@ -598,7 +569,6 @@ int _PLfuse_statfs (const char *file, struct statvfs *st) {
 
 int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 	int rv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("flush begin\n");
@@ -623,7 +593,6 @@ int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 
 int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	int rv;
-	char *rvstr;
 	int flags = fi->flags;
 	FUSE_CONTEXT_PRE;
 	dSP;
@@ -650,7 +619,6 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 
 int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	int rv;
-	char *rvstr;
 	int flags = fi->flags;
 	FUSE_CONTEXT_PRE;
 	dSP;
@@ -677,7 +645,6 @@ int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 
 int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_t buflen, int flags) {
 	int rv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("setxattr begin\n");
@@ -705,7 +672,6 @@ int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_
 
 int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t buflen) {
 	int rv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("getxattr begin\n");
@@ -750,7 +716,6 @@ int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t bufl
 
 int _PLfuse_listxattr (const char *file, char *list, size_t size) {
 	int prv, rv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("listxattr begin\n");
@@ -768,7 +733,6 @@ int _PLfuse_listxattr (const char *file, char *list, size_t size) {
 		char *p = list;
 		int spc = size;
 		int total_len = 0;
-		int i;
 
 		rv = POPi;
 		prv--;
@@ -817,7 +781,6 @@ int _PLfuse_listxattr (const char *file, char *list, size_t size) {
 
 int _PLfuse_removexattr (const char *file, const char *name) {
 	int rv;
-	char *rvstr;
 	FUSE_CONTEXT_PRE;
 	dSP;
 	DEBUGf("removexattr begin\n");
@@ -881,13 +844,11 @@ perl_fuse_main(...)
 	struct fuse_operations fops = 
 		{NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
 		 NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
-	int i, fd, varnum = 0, debug, threaded, have_mnt;
+	int i, fd, debug, threaded;
 	char *mountpoint;
 	char *mountopts;
 	struct fuse_args margs = FUSE_ARGS_INIT(0, NULL);
 	struct fuse_args fargs = FUSE_ARGS_INIT(0, NULL);
-	STRLEN n_a;
-	STRLEN l;
 	INIT:
 	if(items != 29) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
