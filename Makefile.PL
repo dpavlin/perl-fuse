@@ -2,9 +2,17 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 
+my $ver = `fusermount -V`;
+$ver =~ s/^.*?version:\s+//;
+if ($ver + 0 < 2.5) {
+	die "Fuse perl bindings need fuse version 2.5 or never\n";
+} else {
+	warn "fuse version found: $ver\n";
+}
+
 my $inc = '-DFUSE_USE_VERSION=25 ' . `pkg-config --cflags fuse` || '-I ../include -D_FILE_OFFSET_BITS=64';
 my $obj = `pkg-config --libs fuse` || '-lfuse';
- 
+
 WriteMakefile(
     'NAME'		=> 'Fuse',
     'VERSION_FROM'	=> 'Fuse.pm', # finds $VERSION
