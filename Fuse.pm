@@ -79,7 +79,7 @@ sub main {
 			rename link chmod chown truncate utime open read write statfs
 			flush release fsync setxattr getxattr listxattr removexattr);
 	my @subs = map {undef} @names;
-	my @validOpts = qw(ro allow_other default_permissions fsname use_ino);
+	my @validOpts = qw(ro allow_other default_permissions fsname use_ino nonempty);
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
 	my %optmap  = map { $_ => 1 } @validOpts;
