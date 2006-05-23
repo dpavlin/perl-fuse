@@ -942,13 +942,18 @@ perl_fuse_main(...)
 	fd = fuse_mount(mountpoint,&margs);
 	fuse_opt_free_args(&margs);        
 	if(fd < 0)
-		croak("could not mount fuse filesystem!");
-        if (debug &&
-	    (fuse_opt_add_arg(&fargs, "") == -1 ||
-	     fuse_opt_add_arg(&fargs, "-d") == -1)) {
-		fuse_opt_free_args(&fargs);
-		croak("out of memory\n");
+		croak("could not mount fuse filesystem!\n");
+        if (debug) {
+		if ( fuse_opt_add_arg(&fargs, "") == -1 ||
+			fuse_opt_add_arg(&fargs, "-d") == -1) {
+			fuse_opt_free_args(&fargs);
+			croak("out of memory\n");
+		}
+	} else {
+		if (fuse_opt_add_arg(&fargs, "") == -1)
+			croak("out of memory\n");
 	}
+
 	if(threaded) {
 		fuse_loop_mt(fuse_new(fd,&fargs,&fops,sizeof(fops)/sizeof(void*)));
 	} else
