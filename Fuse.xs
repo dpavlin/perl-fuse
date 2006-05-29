@@ -916,7 +916,7 @@ perl_fuse_main(...)
 	}
 
 	if(threaded) {
-		fuse_loop_mt(fuse_new(fd,&fargs,&fops,sizeof(fops)/sizeof(void*)));
+		fuse_loop_mt(fuse_new(fd,&fargs,&fops,sizeof(fops)));
 	} else
-		fuse_loop(fuse_new(fd,&fargs,&fops,sizeof(fops)/sizeof(void*)));
+		fuse_loop(fuse_new(fd,&fargs,&fops,sizeof(fops)));
 	fuse_opt_free_args(&fargs);
