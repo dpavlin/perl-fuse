@@ -3,11 +3,15 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 
 my $ver = `fusermount -V`;
+my $ver2 = `mount_fusefs -V`;
 $ver =~ s/^.*?version:\s+//;
-if ($ver + 0 < 2.5) {
-	die "Fuse perl bindings need fuse version 2.5 or never\n";
+$ver2 =~ s/^.*?version:\s+//;
+if ($ver && $ver + 0 < 2.5) {
+	die "Fuse perl bindings need Linux fuse version 2.5 or never\n";
+} elsif ($ver2 && $ver2 + 0 < 0.3) {
+	die "Fuse perl bindings need FreeBSD fuse version 0.3 or never\n";
 } else {
-	warn "fuse version found: $ver\n";
+	warn "fuse version found: ", $ver || $ver2, "\n";
 }
 
 my $inc = '-DFUSE_USE_VERSION=25 ' . `pkg-config --cflags fuse` || '-I ../include -D_FILE_OFFSET_BITS=64';
