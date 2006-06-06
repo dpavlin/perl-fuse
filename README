@@ -1,4 +1,4 @@
-Fuse version 0.06
+Fuse version 0.07
 =================
 
 Fuse is combination of Linux kernel module and user space library which
@@ -12,6 +12,7 @@ database as file system, but there will be more.
 This is a pre-production release.  It seems to work quite well.  In fact, I
 can't find any problems with it whatsoever.  If you do, I want to know.
 
+Support for FreeBSD is experimental, so expect tests to fail.
 
 INSTALLATION
 
