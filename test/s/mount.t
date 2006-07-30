@@ -16,8 +16,14 @@ if(!fork()) {
 	exec("perl -Iblib/lib -Iblib/arch $_loop $_point");
 	exit(1);
 }
-select(undef, undef, undef, 0.5);
-my ($success) = `cat /proc/mounts` =~ / $_point /;
+
+my ($success, $count) = (0,0);
+while ($count++ < 50 && !$success) {
+	select(undef, undef, undef, 0.1);
+    ($success) = `cat /proc/mounts` =~ / $_point /;
+}
+diag "Mounted in ", $count/10, " secs";
+
 ok($success,"mount succeeded");
 system("rm -rf $_real");
 unless($success) {
