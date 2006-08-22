@@ -834,7 +834,7 @@ perl_fuse_main(...)
 	threaded = SvIV(ST(1));
 	if(threaded) {
 #ifdef FUSE_USE_ITHREADS
-		master_interp = PERL_GET_INTERP;
+		master_interp = PERL_GET_CONTEXT;
 #else
 		fprintf(stderr,"FUSE warning: Your script has requested multithreaded "
 		               "mode, but your perl was not built with -Dusethreads.  "
