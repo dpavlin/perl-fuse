@@ -36,7 +36,7 @@ sub MY::postamble {
 	return <<'MAKE_MORE';
 
 sf:
-	svn2cvs.pl file:///home/dpavlin/.svk/fuse/perl-llin :ext:dpavlin@cvs.sourceforge.net:/cvsroot/fuse perl
+	svn2cvs.pl file:///home/dpavlin/private/svn/fuse/perl-llin :ext:dpavlin@fuse.cvs.sourceforge.net:/cvsroot/fuse perl
 
 MAKE_MORE
 };
