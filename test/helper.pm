@@ -20,7 +20,7 @@ if($0 !~ qr|s/u?mount\.t$|) {
 			}
 		}
 	}
-	system("ls $_point >&/dev/null");
+	system("ls $_point >/dev/null");
 	$reject = 1 if (POSIX::WEXITSTATUS($?));
 	die "not properly mounted\n" if $reject;
 }
