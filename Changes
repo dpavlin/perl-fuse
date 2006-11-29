@@ -40,3 +40,9 @@ Revision history for Perl extension Fuse.
     - testsuite uses a multithreaded loopback.pl, when available.
     - Update docs accordingly.  Update examples accordingly.
     - Works on FreeBSD with fuse4bsd http://fuse4bsd.creo.hu/
+
+0.08 Wed Nov 29 14:24:39 CET 2006
+    - fix race condition in test/s/mount.t
+    - allow Fuse to be run from a non-master thread
+    - CPANPLUS doesn't report errors anymore if fuse isn't installed
+    - fix to test helper
