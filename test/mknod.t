@@ -26,6 +26,10 @@ SKIP: {
 	chdir($_real);
 	ok(-e "chr" ,"chrdev exists");
 	ok(-e "blk" ,"blkdev exists");
+        
+        skip('mknod() is just pretend under fakeroot(1)', 4)
+          if exists $ENV{FAKEROOTKEY};
+
 	ok(-c "chr" ,"chrdev is chrdev");
 	ok(-b "blk" ,"blkdev is blkdev");
 
