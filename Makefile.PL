@@ -29,7 +29,7 @@ if ($ver && $ver + 0 < 2.5) {
 my $inc = '-DFUSE_USE_VERSION=25 ' . `pkg-config --cflags fuse` || '-I ../include -D_FILE_OFFSET_BITS=64';
 my $obj = `pkg-config --libs fuse` || '-lfuse';
 my $def = '-Wall -g -ggdb';
-$def .= ' -D__FreeBSD__=10' if $^O eq 'darwin';
+$def .= ' -D__FreeBSD__=10 -D_FILE_OFFSET_BITS=64' if $^O eq 'darwin';
 
 WriteMakefile(
 	'NAME'			=> 'Fuse',
