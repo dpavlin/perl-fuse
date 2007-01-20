@@ -21,14 +21,14 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE) ],
+		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context) ],
 		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ]
 		    );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = ();
-our $VERSION = '0.08';
+our $VERSION = '0.09_1';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()

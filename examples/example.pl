@@ -2,7 +2,7 @@
 use strict;
 
 use blib;
-use Fuse;
+use Fuse qw(fuse_get_context);
 use POSIX qw(ENOENT EISDIR EINVAL);
 
 my (%files) = (
@@ -23,6 +23,12 @@ my (%files) = (
 		mode => 0644,
 		ctime => time()-1000
 	},
+	me => {
+		size => 45,
+		type => 0100,
+		mode => 0644,
+		ctime => time()-1000
+	},
 );
 
 sub filename_fixup {
@@ -38,6 +44,7 @@ sub e_getattr {
 	$file = '.' unless length($file);
 	return -ENOENT() unless exists($files{$file});
 	my ($size) = exists($files{$file}{cont}) ? length($files{$file}{cont}) : 0;
+	$size = $files{$file}{size} if exists $files{$file}{size};
 	my ($modes) = ($files{$file}{type}<<9) + $files{$file}{mode};
 	my ($dev, $ino, $rdev, $blocks, $gid, $uid, $nlink, $blksize) = (0,0,0,1,0,0,1,1024);
 	my ($atime, $ctime, $mtime);
@@ -59,7 +66,7 @@ sub e_open {
 	my ($file) = filename_fixup(shift);
 	print("open called\n");
 	return -ENOENT() unless exists($files{$file});
-	return -EISDIR() unless exists($files{$file}{cont});
+	return -EISDIR() if $files{$file}{type} & 0040;
 	print("open ok\n");
 	return 0;
 }
@@ -70,6 +77,11 @@ sub e_read {
 	my ($file) = filename_fixup(shift);
 	my ($buf,$off) = @_;
 	return -ENOENT() unless exists($files{$file});
+	if(!exists($files{$file}{cont})) {
+		return -EINVAL() if $off > 0;
+		my $context = fuse_get_context();
+		return sprintf("pid=0x%08x uid=0x%08x gid=0x%08x\n",@$context{'pid','uid','gid'});
+	}
 	return -EINVAL() if $off > length($files{$file}{cont});
 	return 0 if $off == length($files{$file}{cont});
 	return substr($files{$file}{cont},$off,$buf);
