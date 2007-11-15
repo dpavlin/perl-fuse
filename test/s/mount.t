@@ -20,7 +20,7 @@ if(!fork()) {
 my ($success, $count) = (0,0);
 while ($count++ < 50 && !$success) {
 	select(undef, undef, undef, 0.1);
-    ($success) = `cat /proc/mounts` =~ / $_point /;
+	   ($success) = `mount` =~ / $_point /;
 }
 diag "Mounted in ", $count/10, " secs";
 
