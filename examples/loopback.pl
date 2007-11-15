@@ -6,14 +6,33 @@ use Fuse;
 use IO::File;
 use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT);
 use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET);
-require 'syscall.ph'; # for SYS_mknod and SYS_lchown
+my $can_syscall = eval {
+	require 'syscall.ph'; # for SYS_mknod and SYS_lchown
+};
+if (!$can_syscall && open my $fh, '<', '/usr/include/sys/syscall.h') {
+	local $/ = undef;
+	my %sys = do { local $/ = undef;
+			<$fh> =~ m/\#define \s+ (\w+) \s+ (\d+)/gxms;
+        };
+	close $fh;
+	if ($sys{SYS_mknod} && $sys{SYS_lchown}) {
+		*SYS_mknod  = sub { $sys{SYS_mknod}  };
+		*SYS_lchown = sub { $sys{SYS_lchown} };
+		$can_syscall = 1;
+	}
+}
 
-my $tmp_path = "/tmp/fusetest-" . $ENV{LOGNAME};
+my $tmp = -d '/private' ? '/private/tmp' : '/tmp';
+my $tmp_path = "$tmp/fusetest-" . $ENV{LOGNAME};
 if (! -e $tmp_path) {
 	mkdir($tmp_path) || die "can't create $tmp_path: $!";
 }
 
-sub fixup { return $tmp_path . shift }
+sub fixup { print STDERR "fixup $_[0] from @{[caller]}\n";
+            my ($path) = @_;
+            return $tmp_path if $path eq '/';
+            return $tmp_path . $path;
+}
 
 sub x_getattr {
 	my ($file) = fixup(shift);
@@ -82,6 +101,7 @@ sub x_rename {
 }
 sub x_link { return link(fixup(shift),fixup(shift)) ? 0 : -$! }
 sub x_chown {
+	return -ENOSYS() if ! $can_syscall;
 	my ($fn) = fixup(shift);
 	print "nonexistent $fn\n" unless -e $fn;
 	my ($uid,$gid) = @_;
@@ -105,6 +125,7 @@ sub x_mkdir { my ($name, $perm) = @_; return 0 if mkdir(fixup($name),$perm); ret
 sub x_rmdir { return 0 if rmdir fixup(shift); return -$!; }
 
 sub x_mknod {
+	return -ENOSYS() if ! $can_syscall;
 	# since this is called for ALL files, not just devices, I'll do some checks
 	# and possibly run the real mknod command.
 	my ($file, $modes, $dev) = @_;

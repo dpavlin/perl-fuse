@@ -11,7 +11,8 @@ $ver3 =~ s/^.*?version\s+//;
 if (! $ver && ! $ver2 && ! $ver3) {
 	# make CPANPLUS happy and don't report errors if fuse isn't installed
 	die("No support for os: $^O\n",
-		"You need to have fuse-dev (or similar) package installed and have sufficient permissions in order to install this module\n"
+		"You need to have fuse-dev (or similar) package installed and have sufficient permissions in order to install this module\n",
+		$^O eq 'darwin' ? ("One option on Mac is http://code.google.com/p/macfuse/\n") : (),
 	);
 }
 if ($ver && $ver + 0 < 2.5) {

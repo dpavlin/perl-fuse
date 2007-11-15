@@ -7,16 +7,19 @@ use POSIX qw(WEXITSTATUS);
 our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 @ISA = "Exporter";
 @EXPORT_OK = qw($_loop $_point $_pidfile $_real);
-our($_loop, $_point, $_pidfile, $_real) = ("","/tmp/fusemnt-".$ENV{LOGNAME},"test/s/mounted.pid","/tmp/fusetest-".$ENV{LOGNAME});
-$_loop = $Config{useithreads} ? "examples/loopback_t.pl" : "examples/loopback.pl";
+my $tmp = -d '/private' ? '/private/tmp' : '/tmp';
+our($_loop, $_point, $_pidfile, $_real) = ("","$tmp/fusemnt-".$ENV{LOGNAME},"test/s/mounted.pid","$tmp/fusetest-".$ENV{LOGNAME});
+$_loop = $^O ne 'darwin' && $Config{useithreads} ? "examples/loopback_t.pl" : "examples/loopback.pl";
 if($0 !~ qr|s/u?mount\.t$|) {
 	my ($reject) = 1;
-	if(-f $_pidfile) {
-		unless(POSIX::WEXITSTATUS(system("ps `cat $_pidfile` | grep \"$_loop $_point\" >/dev/null"))) {
-			if(`mount | grep "on $_point"`) {
+	if(open my $fh, '<', $_pidfile) {
+		my $pid = do {local $/ = undef; <$fh>};
+		close $fh;
+		if(kill 0, $pid) {
+			if(`mount` =~ m{on (?:/private)?$_point }) {
 				$reject = 0;
 			} else {
-				system("kill `cat $_pidfile`");
+				kill 1, $pid;
 			}
 		}
 	}

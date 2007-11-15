@@ -1,7 +1,10 @@
 #!/usr/bin/perl
 use test::helper qw($_real $_point);
 use Test::More;
-require 'syscall.ph'; # for SYS_statfs
+eval {
+   require 'syscall.ph'; # for SYS_statfs
+} or plan skip_all => 'No syscall.ph';
+
 plan tests => 7;
 my ($statfs_data) = 0x00 x 8 x 16;
 my ($tmp) = $_point;

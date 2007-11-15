@@ -2,7 +2,13 @@
 use test::helper qw($_point $_loop $_real $_pidfile);
 use strict;
 use Test::More tests => 3;
-ok(!(scalar grep(/ on $_point /,`cat /proc/mounts`)),"already mounted");
+
+sub is_mounted {
+	my $diag = -d '/proc' ? `cat /proc/mounts` : `mount`;
+	return $diag =~ m{ (?:/private)?$_point };
+}
+
+ok(!is_mounted(),"already mounted");
 ok(-f $_loop,"loopback exists");
 
 if(!fork()) {
@@ -13,6 +19,8 @@ if(!fork()) {
 	mkdir $_real;
 	`echo $$ >test/s/mounted.pid`;
 	diag "mounting $_loop to $_point";
+	open STDOUT, '>', '/tmp/fusemnt.log';
+	open STDERR, '>&', \*STDOUT;
 	exec("perl -Iblib/lib -Iblib/arch $_loop $_point");
 	exit(1);
 }
@@ -20,7 +28,7 @@ if(!fork()) {
 my ($success, $count) = (0,0);
 while ($count++ < 50 && !$success) {
 	select(undef, undef, undef, 0.1);
-	   ($success) = `mount` =~ / $_point /;
+	($success) = is_mounted();
 }
 diag "Mounted in ", $count/10, " secs";
 
