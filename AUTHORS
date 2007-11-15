@@ -8,3 +8,4 @@ Mark Wilkinson <mark.wilkinson@2pmtech.com> - added mount options
 Csaba Henk <csaba.henk@creo.hu> - update to API 25
 Vladimir V. Kolpakov <w@sfgate.com> - contributed cleanup for warnings
 Andrew Chadwick <andrewc@cpan.org> - fixes for Ubuntu and dh-make-perl (fakeroot)
+Chris Dolan <cdolan@cpan.org> - fixes for MacFuse 1.1.0
