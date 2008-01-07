@@ -2,7 +2,7 @@
 # filter_attr_t.pl
 # Loopback fs that shows only files with a particular xattr
 
-# Reuben Thomas  29th November 2007, based on example code from Fuse package
+# (c) Reuben Thomas  29/11/2007-5/1/2008, based on example code from Fuse package
 
 use strict;
 #use blib;
@@ -14,14 +14,14 @@ use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT O_ACCMO
 use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET);
 
 # Debug flag
-#my $debug = 1;
+my $debug = 0;
 
 # Global settings
 my ($tag, $real_root, $mountpoint);
 
 
 sub debug {
-	print STDERR shift if $debug;
+	print STDERR shift if $debug ne 0;
 }
 
 my $can_syscall = eval {
@@ -97,15 +97,18 @@ sub x_mknod {
 	return -EEXIST() if -e $file && !tagged($file);
 	$! = 0;
 	syscall(&SYS_mknod, $file, $modes, $dev);
-        tag($file) if $! == 0;
-	return -$!;
+	return -$! if $! != 0;
+	return err(tag($file));
 }
 
 sub x_mkdir {
 	debug("x_mkdir ");
 	my ($name, $perm) = @_;
 	$name = append_root($name);
-	return err(mkdir($name, $perm));
+	debug("$name");
+	my $ret = err(mkdir $name, $perm);
+	return $ret if $ret != 0;
+	return err(tag($name));
 }
 
 sub x_open {
@@ -165,7 +168,7 @@ sub x_symlink {
 	debug("x_symlink ");
 	my ($old) = shift;
 	my ($new) = append_root(shift);
-        return -EEXIST() if -e $new && !tagged($new);
+	return -EEXIST() if -e $new && !tagged($new);
 	return err(symlink($old, $new));
 }
 
@@ -174,7 +177,7 @@ sub x_rename {
 	my ($old) = append_root(shift);
 	my ($new) = append_root(shift);
 	return -ENOENT() unless tagged($old);
-        return -EEXIST() unless !-e $new || tagged($new);
+	return -EEXIST() unless !-e $new || tagged($new);
 	my ($err) = rename($old, $new) ? 0 : -ENOENT();
 	return $err;
 }
@@ -184,7 +187,7 @@ sub x_link {
 	my ($old) = append_root(shift);
 	my ($new) = append_root(shift);
 	return -ENOENT() unless tagged($old);
-        return -EEXIST() unless !-e $new || tagged($new);
+	return -EEXIST() unless !-e $new || tagged($new);
 	return err(link($old, $new));
 }
 
@@ -195,9 +198,9 @@ sub x_chown {
 	return -ENOENT() unless tagged($fn);
 	my ($uid, $gid) = @_;
 	# perl's chown() does not chown symlinks, it chowns the symlink's
-	# target.  it fails when the link's target doesn't exist, because
+	# target. It fails when the link's target doesn't exist, because
 	# the stat64() syscall fails.
-	# this causes error messages when unpacking symlinks in tarballs.
+	# This causes error messages when unpacking symlinks in tarballs.
 	my ($err) = syscall(&SYS_lchown, $fn, $uid, $gid, $fn) ? -$! : 0;
 	return $err;
 }
