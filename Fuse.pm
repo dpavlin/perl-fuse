@@ -234,6 +234,15 @@ threads::shared.)
 
 =back
 
+=head3 Fuse::fuse_get_context
+ 
+ use Fuse "fuse_get_context";
+ my $caller_uid = fuse_get_context()->{"uid"};
+ my $caller_gid = fuse_get_context()->{"gid"};
+ my $caller_pid = fuse_get_context()->{"pid"};
+ 
+Access context information about the current Fuse operation. 
+
 =head2 FUNCTIONS YOUR FILESYSTEM MAY IMPLEMENT
 
 =head3 getattr
