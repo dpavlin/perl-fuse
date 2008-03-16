@@ -64,7 +64,7 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 		result->st_ctime = POPi;
 		result->st_mtime = POPi;
 		result->st_atime = POPi;
-		result->st_size = POPi;
+		result->st_size = (size_t)POPi;
 		result->st_rdev = POPi;
 		result->st_gid = POPi;
 		result->st_uid = POPi;

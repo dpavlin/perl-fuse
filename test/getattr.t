@@ -2,9 +2,14 @@
 use test::helper qw($_real $_point);
 use Test::More;
 use Data::Dumper;
-plan tests => 28;
+plan tests => 29;
 my ($a, $b) = ("$_real/wibble","$_point/wibble");
-`touch $b`;
+# create 3G file to expose 2G bug
+open(my $fh, '>', $a) || die "can't open $b: $!";
+seek($fh, 3 * 1024 * 1024 * 1024, 0);
+print $fh ' ';
+close($fh);
+diag "size $b = ",-s $b;
 is(-A "$a", -A "$b", '-A'); # 1
 is(-B "$a", -B "$b", '-B'); # 2
 is(-C "$a", -C "$b", '-C'); # 3
@@ -39,4 +44,4 @@ my (@astat, @bstat);
 @astat = @astat[2..10,12];
 @bstat = @bstat[2..10,12];
 is(join(" ",@astat),join(" ",@bstat),"stat()");
-`rm -f $a`;
+ok( unlink($a), 'unlink' );
