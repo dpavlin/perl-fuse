@@ -50,6 +50,18 @@ WriteMakefile(
 sub MY::postamble {
 	return <<'MAKE_MORE';
 
+cpan:
+	make clean
+	rm -f Fuse-*.tar.gz
+	perl Makefile.PL
+	make dist
+	make disttest
+	@echo
+	@echo -n "Upload" Fuse-*.tar.gz "to CPAN? [y/N]:"
+	@read upload && test "$$upload" == "y" && cpan-upload -verbose Fuse-*.tar.gz
+
+
+
 sf:
 	svn2cvs.pl file:///home/dpavlin/private/svn/fuse/perl-llin :ext:dpavlin@fuse.cvs.sourceforge.net:/cvsroot/fuse perl
 
