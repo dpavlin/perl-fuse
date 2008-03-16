@@ -46,3 +46,10 @@ Revision history for Perl extension Fuse.
     - allow Fuse to be run from a non-master thread
     - CPANPLUS doesn't report errors anymore if fuse isn't installed
     - fix to test helper
+
+0.09
+    - support dh-make-perl with fakeroot
+    - added fuse_get_context
+    - works with MacFUSE http://code.google.com/p/macfuse/
+    - added example filter_attr_fs.pl
+    - fix 2Gb file bug, RT #32639, RT #33903
