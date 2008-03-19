@@ -52,4 +52,6 @@ Revision history for Perl extension Fuse.
     - added fuse_get_context
     - works with MacFUSE http://code.google.com/p/macfuse/
     - added example filter_attr_fs.pl
-    - fix 2Gb file bug, RT #32639, RT #33903
+
+0.09_3
+    - really fix 2+ Gb file bug, RT #32639, RT #33903
