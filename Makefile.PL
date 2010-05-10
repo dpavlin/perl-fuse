@@ -39,6 +39,14 @@ WriteMakefile(
 	($] >= 5.005 ?	## Add these new keywords supported since 5.005
 		(ABSTRACT_FROM	=> 'Fuse.pm', # retrieve abstract from module
 		AUTHOR			=> 'Mark Glines <mark@glines.org>') : ()),
+		($ExtUtils::MakeMaker::VERSION < 6.46 ? () : (
+			META_MERGE => {
+				resources => {
+				bugtracker => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Fuse',
+				repository => 'http://github.com/dpavlin/perl-fuse'
+			}
+   		})
+	),
 	'LIBS'			=> [''], # e.g., '-lm'
 	'DEFINE'		=> $def, # e.g., '-DHAVE_SOMETHING'
 	# Insert -I. if you add *.h files later:
