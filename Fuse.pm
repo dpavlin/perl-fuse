@@ -396,7 +396,7 @@ Called in an attempt to fetch a portion of the file.
 
 Arguments:  Pathname, scalar buffer, numeric offset.  You can use length($buffer) to
 find the buffersize.
-Returns an errno.
+Returns length($buffer) if successful (number of bytes written).
 
 Called in an attempt to write (or overwrite) a portion of the file.  Be prepared because $buffer could contain random binary data with NULLs and all sorts of other wonderful stuff.
 
