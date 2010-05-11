@@ -1,5 +1,5 @@
-Fuse version 0.07
-=================
+Fuse perl bindings
+==================
 
 Fuse is combination of Linux kernel module and user space library which
 enables you to write user-space filesystems. This module enables you to
