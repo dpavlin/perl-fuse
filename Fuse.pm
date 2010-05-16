@@ -294,7 +294,7 @@ example rv: return "/proc/self/fd/stdin";
 Arguments:  Containing directory name.
 Returns a list: 0 or more text strings (the filenames), followed by a numeric errno (usually 0).
 
-This is used to obtain directory listings.  Its opendir(), readdir(), filldir() and closedir() all in one call.
+This is used to obtain directory listings.  It's opendir(), readdir(), filldir() and closedir() all in one call.
 
 example rv: return ('.', 'a', 'b', 0);
 
@@ -379,26 +379,31 @@ Called to change access/modification times for a file/directory/device/symlink.
 =head3 open
 
 Arguments:  Pathname, numeric flags (which is an OR-ing of stuff like O_RDONLY
-and O_SYNC, constants you can import from POSIX).
-Returns an errno.
+and O_SYNC, constants you can import from POSIX), fileinfo hash reference.
+Returns an errno, a file handle (optional).
 
 No creation, or trunctation flags (O_CREAT, O_EXCL, O_TRUNC) will be passed to open().
+The fileinfo hash reference contains flags from the Fuse open call which may be modified by the module. The only fields presently supported are:
+ direct_io (version 2.4 onwards)
+ keep_cache (version 2.4 onwards)
+ nonseekable (version 2.9 onwards)
 Your open() method needs only check if the operation is permitted for the given flags, and return 0 for success.
+Optionally a file handle may be returned, which will be passed to subsequent read, write, flush, fsync and release calls.
 
 =head3 read
 
-Arguments:  Pathname, numeric requestedsize, numeric offset.
+Arguments:  Pathname, numeric requested size, numeric offset, file handle
 Returns a numeric errno, or a string scalar with up to $requestedsize bytes of data.
 
 Called in an attempt to fetch a portion of the file.
 
 =head3 write
 
-Arguments:  Pathname, scalar buffer, numeric offset.  You can use length($buffer) to
+Arguments:  Pathname, scalar buffer, numeric offset, file handle.  You can use length($buffer) to
 find the buffersize.
 Returns an errno.
 
-Called in an attempt to write (or overwrite) a portion of the file.  Be prepared because $buffer could contain random binary data with NULLs and all sorts of other wonderful stuff.
+Called in an attempt to write (or overwrite) a portion of the file.  Be prepared because $buffer could contain random binary data with NULs and all sorts of other wonderful stuff.
 
 =head3 statfs
 
@@ -417,7 +422,7 @@ or
 
 =head3 flush
 
-Arguments: Pathname
+Arguments: Pathname, file handle
 Returns an errno or 0 on success.
 
 Called to synchronise any cached data. This is called before the file
@@ -425,7 +430,7 @@ is closed. It may be called multiple times before a file is closed.
 
 =head3 release
 
-Arguments: Pathname, numeric flags passed to open
+Arguments: Pathname, numeric flags passed to open, file handle
 Returns an errno or 0 on success.
 
 Called to indicate that there are no more references to the file. Called once

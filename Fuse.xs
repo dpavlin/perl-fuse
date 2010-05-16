@@ -418,6 +418,7 @@ int _PLfuse_utime (const char *file, struct utimbuf *uti) {
 int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	int rv;
 	int flags = fi->flags;
+	HV *fihash;
 	FUSE_CONTEXT_PRE;
 	DEBUGf("open begin\n");
 	ENTER;
@@ -425,13 +426,68 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
+	/* Create a hashref containing the details from fi
+	 * which we can look at or modify.
+	 */
+	fi->fh = 0; /* Ensure it starts with 0 - important if they don't set it */
+	fihash = newHV();
+#if FUSE_VERSION >= 24
+	hv_store(fihash, "direct_io", 9, newSViv(fi->direct_io), 0);
+	hv_store(fihash, "keep_cache", 10, newSViv(fi->keep_cache), 0);
+#endif
+#if FUSE_VERSION >= 29
+	hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
+#endif
+	XPUSHs(sv_2mortal(newRV_noinc((SV*) fihash)));
+	/* All hashref things done */
+
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[14],G_SCALAR);
+	/* Open called with filename, flags */
+	rv = call_sv(_PLfuse_callbacks[14],G_ARRAY);
 	SPAGAIN;
 	if(rv)
+	{
+		SV *sv;
+		if (rv > 1)
+		{
+			sv = POPs;
+			if (SvOK(sv))
+			{
+				/* We're holding on to the sv reference until
+				 * after exit of this function, so we need to
+				 * increment its reference count
+				 */
+				fi->fh = SvREFCNT_inc(sv);
+			}
+		}
 		rv = POPi;
+	}
 	else
 		rv = 0;
+	if (rv == 0)
+	{
+		/* Success, so copy the file handle which they returned */
+#if FUSE_VERSION >= 24
+		SV **svp;
+		svp = hv_fetch(fihash, "direct_io", 9, 0);
+		if (svp != NULL)
+		{
+			fi->direct_io = SvIV(*svp);
+		}
+		svp = hv_fetch(fihash, "keep_cache", 10, 0);
+		if (svp != NULL)
+		{
+			fi->keep_cache = SvIV(*svp);
+		}
+#endif
+#if FUSE_VERSION >= 29
+		svp = hv_fetch(fihash, "nonseekable", 11, 0);
+		if (svp != NULL)
+		{
+			fi->nonseekable = SvIV(*svp);
+		}
+#endif
+	}
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -450,6 +506,7 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct 
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(buflen)));
 	XPUSHs(sv_2mortal(newSViv(off)));
+	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[15],G_SCALAR);
 	SPAGAIN;
@@ -489,6 +546,7 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSVpvn(buf,buflen)));
 	XPUSHs(sv_2mortal(newSViv(off)));
+	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[16],G_SCALAR);
 	SPAGAIN;
@@ -557,6 +615,7 @@ int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 	SAVETMPS;
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[18],G_SCALAR);
 	SPAGAIN;
@@ -582,6 +641,7 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
+	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[19],G_SCALAR);
 	SPAGAIN;
@@ -589,6 +649,14 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 		rv = POPi;
 	else
 		rv = 0;
+	/* We're now finished with the handle that we were given, so
+	 * we should decrement its count so that it can be freed.
+	 */
+	if (fi->fh != 0)
+	{
+		SvREFCNT_dec((SV *)fi->fh);
+		fi->fh = 0;
+	}
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -607,6 +675,7 @@ int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
+	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[20],G_SCALAR);
 	SPAGAIN;
@@ -876,7 +945,7 @@ perl_fuse_main(...)
 			_PLfuse_callbacks[i] = var;
 		} else
 		if(SvOK(var)) {
-			croak("invalid callback passed to perl_fuse_main "
+			croak("invalid callback (%i) passed to perl_fuse_main "
 			      "(%s is not a string, code ref, or undef).\n",
 			      i+4,SvPVbyte_nolen(var));
 		}
