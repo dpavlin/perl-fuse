@@ -55,3 +55,6 @@ Revision history for Perl extension Fuse.
 
 0.09_3
     - really fix 2+ Gb file bug, RT #32639, RT #33903
+
+0.09_4
+	- Justin Fletcher addition of file handles on open files, RT #57517

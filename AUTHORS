@@ -11,3 +11,4 @@ Andrew Chadwick <andrewc@cpan.org> - fixes for Ubuntu and dh-make-perl (fakeroot
 Chris Dolan <cdolan@cpan.org> - fixes for MacFuse 1.1.0
 Reuben Thomas <rrt@sc3d.org> - contributed examples/filter_attr_fs.pl
 jaslong from CPAN::Forum - documentation patch for fuse_get_context
+Justin Fletcher <gerph@gerph.org> - added file handles on open files
