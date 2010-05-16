@@ -1,7 +1,9 @@
 #!/usr/bin/perl -w
 use strict;
 
-use blib;
+use Data::Dumper;
+
+#use blib;
 use Fuse qw(fuse_get_context);
 use POSIX qw(ENOENT EISDIR EINVAL);
 
@@ -63,19 +65,25 @@ sub e_getdir {
 
 sub e_open {
 	# VFS sanity check; it keeps all the necessary state, not much to do here.
-	my ($file) = filename_fixup(shift);
-	print("open called\n");
+    my $file = filename_fixup(shift);
+    my ($flags, $fileinfo) = @_;
+    print("open called $file, $flags, $fileinfo\n");
 	return -ENOENT() unless exists($files{$file});
 	return -EISDIR() if $files{$file}{type} & 0040;
-	print("open ok\n");
-	return 0;
+    
+    my $fh = [ rand() ];
+    
+    print("open ok (handle $fh)\n");
+    return (0, $fh);
 }
 
 sub e_read {
 	# return an error numeric, or binary/text string.  (note: 0 means EOF, "0" will
 	# give a byte (ascii "0") to the reading program)
 	my ($file) = filename_fixup(shift);
-	my ($buf,$off) = @_;
+    my ($buf, $off, $fh) = @_;
+    print "read from $file, $buf \@ $off\n";
+    print "file handle:\n", Dumper($fh);
 	return -ENOENT() unless exists($files{$file});
 	if(!exists($files{$file}{cont})) {
 		return -EINVAL() if $off > 0;
