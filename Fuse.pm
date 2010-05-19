@@ -79,10 +79,8 @@ sub main {
 			rename link chmod chown truncate utime open read write statfs
 			flush release fsync setxattr getxattr listxattr removexattr);
 	my @subs = map {undef} @names;
-	my @validOpts = qw(ro allow_other default_permissions fsname use_ino nonempty);
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
-	my %optmap  = map { $_ => 1 } @validOpts;
 	my @otherargs = qw(debug threaded mountpoint mountopts);
 	my %otherargs = (debug=>0, threaded=>0, mountpoint=>"", mountopts=>"");
 	while(my $name = shift) {
@@ -94,10 +92,6 @@ sub main {
 			croak "Usage: Fuse::main(getattr => \"main::my_getattr\", ...)" unless $subref;
 			$subs[$mapping{$name}] = $subref;
 		}
-	}
-	foreach my $opt ( map {m/^([^=]*)/; $1} split(/,/,$otherargs{mountopts}) ) {
-	  next if exists($optmap{$opt});
-	  croak "Fuse::main: invalid '$opt' argument in mountopts";
 	}
 	if($otherargs{threaded}) {
 		# make sure threads are both available, and loaded.
