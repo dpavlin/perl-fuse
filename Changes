@@ -58,3 +58,7 @@ Revision history for Perl extension Fuse.
 
 0.09_4
 	- Justin Fletcher addition of file handles on open files, RT #57517
+
+0.10_1
+	- cleanup options
+	- 64 bit perl support
