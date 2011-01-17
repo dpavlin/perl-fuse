@@ -368,13 +368,22 @@ int _PLfuse_chown (const char *file, uid_t uid, gid_t gid) {
 
 int _PLfuse_truncate (const char *file, off_t off) {
 	int rv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
 	FUSE_CONTEXT_PRE;
 	DEBUGf("truncate begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
+#ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
+#else
+	asprintf(&temp, "%llu", off);
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[12],G_SCALAR);
 	SPAGAIN;
@@ -498,6 +507,9 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 
 int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct fuse_file_info *fi) {
 	int rv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
 	FUSE_CONTEXT_PRE;
 	DEBUGf("read begin\n");
 	ENTER;
@@ -505,7 +517,13 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct 
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(buflen)));
+#ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
+#else
+	asprintf(&temp, "%llu", off);
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
 	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[15],G_SCALAR);
@@ -538,6 +556,9 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct 
 
 int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, struct fuse_file_info *fi) {
 	int rv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
 	FUSE_CONTEXT_PRE;
 	DEBUGf("write begin\n");
 	ENTER;
@@ -545,7 +566,13 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSVpvn(buf,buflen)));
+#ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
+#else
+	asprintf(&temp, "%llu", off);
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
 	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
 	rv = call_sv(_PLfuse_callbacks[16],G_SCALAR);
@@ -906,11 +933,12 @@ perl_fuse_main(...)
 	struct fuse_operations fops = 
 		{NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
 		 NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
-	int i, fd, debug, threaded;
+	int i, debug, threaded;
 	char *mountpoint;
 	char *mountopts;
 	struct fuse_args margs = FUSE_ARGS_INIT(0, NULL);
 	struct fuse_args fargs = FUSE_ARGS_INIT(0, NULL);
+	struct fuse_chan *fc;
 	INIT:
 	if(items != 29) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
@@ -962,9 +990,9 @@ perl_fuse_main(...)
 		fuse_opt_free_args(&margs);
 		croak("out of memory\n");
 	}
-	fd = fuse_mount(mountpoint,&margs);
+	fc = fuse_mount(mountpoint,&margs);
 	fuse_opt_free_args(&margs);        
-	if(fd < 0)
+	if (fc == NULL)
 		croak("could not mount fuse filesystem!\n");
         if (debug) {
 		if ( fuse_opt_add_arg(&fargs, "") == -1 ||
@@ -976,9 +1004,11 @@ perl_fuse_main(...)
 		if (fuse_opt_add_arg(&fargs, "") == -1)
 			croak("out of memory\n");
 	}
-
+#ifndef __NetBSD__
 	if(threaded) {
-		fuse_loop_mt(fuse_new(fd,&fargs,&fops,sizeof(fops)));
+		fuse_loop_mt(fuse_new(fc,&fargs,&fops,sizeof(fops),NULL));
 	} else
-		fuse_loop(fuse_new(fd,&fargs,&fops,sizeof(fops)));
+#endif
+		fuse_loop(fuse_new(fc,&fargs,&fops,sizeof(fops),NULL));
+	fuse_unmount(mountpoint,fc);
 	fuse_opt_free_args(&fargs);

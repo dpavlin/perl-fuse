@@ -1,4 +1,5 @@
 use ExtUtils::MakeMaker;
+use Config;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 
@@ -27,10 +28,11 @@ if ($ver && $ver + 0 < 2.5) {
 	warn "fuse version found: ", $ver || $ver2 || $ver3, "\n";
 }
 
-my $inc = '-DFUSE_USE_VERSION=25 ' . `pkg-config --cflags fuse` || '-I ../include -D_FILE_OFFSET_BITS=64';
-my $obj = `pkg-config --libs fuse` || '-lfuse';
+my $inc = '-DFUSE_USE_VERSION=26 ' . `pkg-config --cflags fuse` || '-I ../include -D_FILE_OFFSET_BITS=64';
+my $obj = `pkg-config --libs fuse` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse');
 my $def = '-Wall -g -ggdb';
 $def .= ' -D__FreeBSD__=10 -D_FILE_OFFSET_BITS=64' if $^O eq 'darwin';
+$def .= ' -DPERL_HAS_64BITINT' if $Config{'use64bitint'};
 
 WriteMakefile(
 	'NAME'			=> 'Fuse',
