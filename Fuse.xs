@@ -1,33 +1,48 @@
+#define PERL_NO_GET_CONTEXT
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
 
+#include <fuse.h>
+
+/* Determine if threads support should be included */
 #ifdef USE_ITHREADS
 # ifdef I_PTHREAD
-/* perl implements threads with pthread.  So, we use the pthread API for
- * handling thread-local storage. */
-#  include <pthread.h>
-PerlInterpreter *master_interp = NULL;
-static inline void create_perl_context() {
-	if(master_interp) {
-		PerlInterpreter *me = PERL_GET_CONTEXT;
-		if(!me) {
-			PERL_SET_CONTEXT(master_interp);
-			me = perl_clone(master_interp, CLONEf_CLONE_HOST);
-		}
-	}
-}
-#  define FUSE_CONTEXT_PRE create_perl_context(); { dSP
-#  define FUSE_CONTEXT_POST }
 #  define FUSE_USE_ITHREADS
 # else
 #  error "Sorry, I don't know how to handle ithreads on this architecture."
 # endif
+#endif
+
+/* Global Data */
+
+#define MY_CXT_KEY "Fuse::_guts" XS_VERSION
+#define N_CALLBACKS 25
+
+typedef struct {
+	SV *callback[N_CALLBACKS];
+	tTHX self;
+	int threaded;
+	perl_mutex mutex;
+} my_cxt_t;
+START_MY_CXT;
+
+#ifdef FUSE_USE_ITHREADS
+tTHX master_interp = NULL;
+# define FUSE_CONTEXT_PRE dTHX; if(!aTHX) {                   \
+	dMY_CXT_INTERP(master_interp);                            \
+	if(MY_CXT.threaded) {                                     \
+		MUTEX_LOCK(&MY_CXT.mutex);                            \
+		PERL_SET_CONTEXT(master_interp);                      \
+		my_perl = perl_clone(MY_CXT.self, CLONEf_CLONE_HOST); \
+		MUTEX_UNLOCK(&MY_CXT.mutex);                          \
+	}                                                         \
+} { dMY_CXT; dSP;
+# define FUSE_CONTEXT_POST }
 #else
-# define FUSE_CONTEXT_PRE dSP
+# define FUSE_CONTEXT_PRE dMY_CXT; dSP;
 # define FUSE_CONTEXT_POST
 #endif
-#include <fuse.h>
 
 #undef DEBUGf
 #if 0
@@ -35,9 +50,6 @@ static inline void create_perl_context() {
 #else
 #define DEBUGf(a...)
 #endif
-
-#define N_CALLBACKS 25
-SV *_PLfuse_callbacks[N_CALLBACKS];
 
 int _PLfuse_getattr(const char *file, struct stat *result) {
 	int rv;
@@ -48,7 +60,7 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,strlen(file))));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[0],G_ARRAY);
+	rv = call_sv(MY_CXT.callback[0],G_ARRAY);
 	SPAGAIN;
 	if(rv != 13) {
 		if(rv > 1) {
@@ -84,16 +96,16 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 
 int _PLfuse_readlink(const char *file,char *buf,size_t buflen) {
 	int rv;
-	FUSE_CONTEXT_PRE;
 	if(buflen < 1)
 		return EINVAL;
+	FUSE_CONTEXT_PRE;
 	DEBUGf("readlink begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[1],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[1],G_SCALAR);
 	SPAGAIN;
 	if(!rv)
 		rv = -ENOENT;
@@ -131,7 +143,7 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	PUTBACK;
-	prv = call_sv(_PLfuse_callbacks[2],G_ARRAY);
+	prv = call_sv(MY_CXT.callback[2],G_ARRAY);
 	SPAGAIN;
 	if(prv) {
 		rv = POPi;
@@ -160,7 +172,7 @@ int _PLfuse_mknod (const char *file, mode_t mode, dev_t dev) {
 	XPUSHs(sv_2mortal(newSViv(mode)));
 	XPUSHs(sv_2mortal(newSViv(dev)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[3],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[3],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -184,7 +196,7 @@ int _PLfuse_mkdir (const char *file, mode_t mode) {
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(mode)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[4],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[4],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -208,7 +220,7 @@ int _PLfuse_unlink (const char *file) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[5],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[5],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -231,7 +243,7 @@ int _PLfuse_rmdir (const char *file) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[6],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[6],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -255,7 +267,7 @@ int _PLfuse_symlink (const char *file, const char *new) {
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSVpv(new,0)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[7],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[7],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -279,7 +291,7 @@ int _PLfuse_rename (const char *file, const char *new) {
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSVpv(new,0)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[8],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[8],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -303,7 +315,7 @@ int _PLfuse_link (const char *file, const char *new) {
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSVpv(new,0)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[9],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[9],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -327,7 +339,7 @@ int _PLfuse_chmod (const char *file, mode_t mode) {
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(mode)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[10],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[10],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -352,7 +364,7 @@ int _PLfuse_chown (const char *file, uid_t uid, gid_t gid) {
 	XPUSHs(sv_2mortal(newSViv(uid)));
 	XPUSHs(sv_2mortal(newSViv(gid)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[11],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[11],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -385,7 +397,7 @@ int _PLfuse_truncate (const char *file, off_t off) {
 	free(temp);
 #endif
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[12],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[12],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -410,7 +422,7 @@ int _PLfuse_utime (const char *file, struct utimbuf *uti) {
 	XPUSHs(sv_2mortal(newSViv(uti->actime)));
 	XPUSHs(sv_2mortal(newSViv(uti->modtime)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[13],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[13],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -452,7 +464,7 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 
 	PUTBACK;
 	/* Open called with filename, flags */
-	rv = call_sv(_PLfuse_callbacks[14],G_ARRAY);
+	rv = call_sv(MY_CXT.callback[14],G_ARRAY);
 	SPAGAIN;
 	if(rv)
 	{
@@ -526,7 +538,7 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct 
 #endif
 	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[15],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[15],G_SCALAR);
 	SPAGAIN;
 	if(!rv)
 		rv = -ENOENT;
@@ -575,7 +587,7 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 #endif
 	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[16],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[16],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -597,7 +609,7 @@ int _PLfuse_statfs (const char *file, struct statvfs *st) {
 	SAVETMPS;
 	PUSHMARK(SP);
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[17],G_ARRAY);
+	rv = call_sv(MY_CXT.callback[17],G_ARRAY);
 	SPAGAIN;
 	DEBUGf("statfs got %i params\n",rv);
 	if(rv == 6 || rv == 7) {
@@ -644,7 +656,7 @@ int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[18],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[18],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -670,7 +682,7 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[19],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[19],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -704,7 +716,7 @@ int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[20],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[20],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -730,7 +742,7 @@ int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_
 	XPUSHs(sv_2mortal(newSVpvn(buf,buflen)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[21],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[21],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -754,7 +766,7 @@ int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t bufl
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSVpv(name,0)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[22],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[22],G_SCALAR);
 	SPAGAIN;
 	if(!rv)
 		rv = -ENOENT;
@@ -796,7 +808,7 @@ int _PLfuse_listxattr (const char *file, char *list, size_t size) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	PUTBACK;
-	prv = call_sv(_PLfuse_callbacks[23],G_ARRAY);
+	prv = call_sv(MY_CXT.callback[23],G_ARRAY);
 	SPAGAIN;
 	if(!prv)
 		rv = -ENOENT;
@@ -861,7 +873,7 @@ int _PLfuse_removexattr (const char *file, const char *name) {
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSVpv(name,0)));
 	PUTBACK;
-	rv = call_sv(_PLfuse_callbacks[24],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[24],G_SCALAR);
 	SPAGAIN;
 	if(rv)
 		rv = POPi;
@@ -909,6 +921,37 @@ removexattr:		_PLfuse_removexattr,
 MODULE = Fuse		PACKAGE = Fuse
 PROTOTYPES: DISABLE
 
+BOOT:
+	MY_CXT_INIT;
+	MY_CXT.self = aTHX;
+
+void
+CLONE(...)
+	PREINIT:
+		int i;
+		dTHX;
+	CODE:
+		MY_CXT_CLONE;
+		tTHX parent = MY_CXT.self;
+		MY_CXT.self = my_perl;
+#if (PERL_VERSION < 13) || (PERL_VERSION == 13 && PERL_SUBVERSION <= 1)
+		CLONE_PARAMS clone_param;
+		clone_param.flags = 0;
+		for(i=0;i<N_CALLBACKS;i++) {
+			if(MY_CXT.callback[i]) {
+				MY_CXT.callback[i] = sv_dup(MY_CXT.callback[i], &clone_param);
+			}
+		}
+#else
+		CLONE_PARAMS *clone_param = clone_params_new(parent, aTHX);
+		for(i=0;i<N_CALLBACKS;i++) {
+			if(MY_CXT.callback[i]) {
+				MY_CXT.callback[i] = sv_dup(MY_CXT.callback[i], clone_param);
+			}
+		}
+		clone_params_del(clone_param);
+#endif
+
 SV*
 fuse_get_context()
 	PREINIT:
@@ -933,12 +976,13 @@ perl_fuse_main(...)
 	struct fuse_operations fops = 
 		{NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
 		 NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
-	int i, debug, threaded;
+	int i, debug;
 	char *mountpoint;
 	char *mountopts;
 	struct fuse_args margs = FUSE_ARGS_INIT(0, NULL);
 	struct fuse_args fargs = FUSE_ARGS_INIT(0, NULL);
 	struct fuse_chan *fc;
+	dMY_CXT;
 	INIT:
 	if(items != 29) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
@@ -946,15 +990,16 @@ perl_fuse_main(...)
 	}
 	CODE:
 	debug = SvIV(ST(0));
-	threaded = SvIV(ST(1));
-	if(threaded) {
+	MY_CXT.threaded = SvIV(ST(1));
+	if(MY_CXT.threaded) {
 #ifdef FUSE_USE_ITHREADS
-		master_interp = PERL_GET_CONTEXT;
+		master_interp = aTHX;
+		MUTEX_INIT(&MY_CXT.mutex);
 #else
 		fprintf(stderr,"FUSE warning: Your script has requested multithreaded "
 		               "mode, but your perl was not built with -Dusethreads.  "
 		               "Threads are disabled.\n");
-		threaded = 0;
+		MY_CXT.threaded = 0;
 #endif
 	}
 	mountpoint = SvPV_nolen(ST(2));
@@ -965,17 +1010,13 @@ perl_fuse_main(...)
 		if(SvOK(var) && (SvPOK(var) || (SvROK(var) && SvTYPE(SvRV(var)) == SVt_PVCV))) {
 			void **tmp1 = (void**)&_available_ops, **tmp2 = (void**)&fops;
 			tmp2[i] = tmp1[i];
-#ifdef FUSE_USE_ITHREADS
-			if(threaded)
-                /* note: under 5.8.7, this croaks for code references. */
-                SvSHARE(var);
-#endif
-			_PLfuse_callbacks[i] = var;
-		} else
-		if(SvOK(var)) {
+			MY_CXT.callback[i] = var;
+		} else if(SvOK(var)) {
 			croak("invalid callback (%i) passed to perl_fuse_main "
 			      "(%s is not a string, code ref, or undef).\n",
 			      i+4,SvPVbyte_nolen(var));
+		} else {
+			MY_CXT.callback[i] = NULL;
 		}
 	}
 	/*
@@ -1005,7 +1046,7 @@ perl_fuse_main(...)
 			croak("out of memory\n");
 	}
 #ifndef __NetBSD__
-	if(threaded) {
+	if(MY_CXT.threaded) {
 		fuse_loop_mt(fuse_new(fc,&fargs,&fops,sizeof(fops),NULL));
 	} else
 #endif
