@@ -21,6 +21,7 @@
 
 typedef struct {
 	SV *callback[N_CALLBACKS];
+	HV *handles;
 	tTHX self;
 	int threaded;
 	perl_mutex mutex;
@@ -50,6 +51,45 @@ tTHX master_interp = NULL;
 #else
 #define DEBUGf(a...)
 #endif
+
+#define FH_KEY(fi) sv_2mortal(newSViv((fi)->fh))
+#define FH_GETHANDLE(fi) S_fh_get_handle(aTHX_ aMY_CXT_ fi)
+#define FH_STOREHANDLE(fi,sv) S_fh_store_handle(aTHX_ aMY_CXT_ fi, sv)
+#define FH_RELEASEHANDLE(fi) S_fh_release_handle(aTHX_ aMY_CXT_ fi)
+
+SV *S_fh_get_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi) {
+	SV *val;
+	val = &PL_sv_undef;
+	if(fi->fh != 0) {
+		HE *he;
+		if((he = hv_fetch_ent(MY_CXT.handles, FH_KEY(fi), 0, 0))) {
+			val = HeVAL(he);
+			mg_get(val);
+		}
+	}
+	return val;
+}
+
+void S_fh_release_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi) {
+	if(fi->fh != 0) {
+		(void)hv_delete_ent(MY_CXT.handles, FH_KEY(fi), 0, G_DISCARD);
+		fi->fh = 0;
+	}
+}
+
+void S_fh_store_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi, SV *sv) {
+	if(SvOK(sv)) {
+#ifdef FUSE_USE_ITHREADS
+		if(MY_CXT.threaded) {
+			SvSHARE(sv);
+		}
+#endif
+		MAGIC *mg = mg_find(sv, PERL_MAGIC_shared_scalar);
+		fi->fh = mg ? PTR2IV(mg->mg_ptr) : PTR2IV(sv);
+		(void)hv_store_ent(MY_CXT.handles, FH_KEY(fi), sv, 0);
+		mg_set(sv);
+	}
+}
 
 int _PLfuse_getattr(const char *file, struct stat *result) {
 	int rv;
@@ -466,20 +506,9 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	/* Open called with filename, flags */
 	rv = call_sv(MY_CXT.callback[14],G_ARRAY);
 	SPAGAIN;
-	if(rv)
-	{
-		SV *sv;
-		if (rv > 1)
-		{
-			sv = POPs;
-			if (SvOK(sv))
-			{
-				/* We're holding on to the sv reference until
-				 * after exit of this function, so we need to
-				 * increment its reference count
-				 */
-				fi->fh = SvREFCNT_inc(sv);
-			}
+	if(rv) {
+		if(rv > 1) {
+			FH_STOREHANDLE(fi,POPs);
 		}
 		rv = POPi;
 	}
@@ -536,7 +565,7 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct 
 	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
 	free(temp);
 #endif
-	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
+	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[15],G_SCALAR);
 	SPAGAIN;
@@ -585,7 +614,7 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
 	free(temp);
 #endif
-	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
+	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[16],G_SCALAR);
 	SPAGAIN;
@@ -654,7 +683,7 @@ int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 	SAVETMPS;
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
-	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
+	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[18],G_SCALAR);
 	SPAGAIN;
@@ -680,7 +709,7 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
-	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
+	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[19],G_SCALAR);
 	SPAGAIN;
@@ -688,14 +717,7 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 		rv = POPi;
 	else
 		rv = 0;
-	/* We're now finished with the handle that we were given, so
-	 * we should decrement its count so that it can be freed.
-	 */
-	if (fi->fh != 0)
-	{
-		SvREFCNT_dec((SV *)fi->fh);
-		fi->fh = 0;
-	}
+	FH_RELEASEHANDLE(fi);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -714,7 +736,7 @@ int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
-	XPUSHs(fi->fh==0 ? &PL_sv_undef : (SV *)fi->fh);
+	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[20],G_SCALAR);
 	SPAGAIN;
@@ -991,10 +1013,12 @@ perl_fuse_main(...)
 	CODE:
 	debug = SvIV(ST(0));
 	MY_CXT.threaded = SvIV(ST(1));
+	MY_CXT.handles = MUTABLE_HV(sv_2mortal(MUTABLE_SV(newHV())));
 	if(MY_CXT.threaded) {
 #ifdef FUSE_USE_ITHREADS
 		master_interp = aTHX;
 		MUTEX_INIT(&MY_CXT.mutex);
+		SvSHARE(MUTABLE_SV(MY_CXT.handles));
 #else
 		fprintf(stderr,"FUSE warning: Your script has requested multithreaded "
 		               "mode, but your perl was not built with a supported "
