@@ -10,7 +10,7 @@
 # ifdef I_PTHREAD
 #  define FUSE_USE_ITHREADS
 # else
-#  error "Sorry, I don't know how to handle ithreads on this architecture."
+#  warning "Sorry, I don't know how to handle ithreads on this architecture. Building non-threaded version"
 # endif
 #endif
 
@@ -997,8 +997,8 @@ perl_fuse_main(...)
 		MUTEX_INIT(&MY_CXT.mutex);
 #else
 		fprintf(stderr,"FUSE warning: Your script has requested multithreaded "
-		               "mode, but your perl was not built with -Dusethreads.  "
-		               "Threads are disabled.\n");
+		               "mode, but your perl was not built with a supported "
+		               "thread model. Threads are disabled.\n");
 		MY_CXT.threaded = 0;
 #endif
 	}
