@@ -12,3 +12,4 @@ Chris Dolan <cdolan@cpan.org> - fixes for MacFuse 1.1.0
 Reuben Thomas <rrt@sc3d.org> - contributed examples/filter_attr_fs.pl
 jaslong from CPAN::Forum - documentation patch for fuse_get_context
 Justin Fletcher <gerph@gerph.org> - added file handles on open files
+Derrik Pates <demon@now.ai> - added 64-bit support and fuse 2.6 binding

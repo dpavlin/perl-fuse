@@ -61,4 +61,4 @@ Revision history for Perl extension Fuse.
 
 0.10_1
 	- cleanup options
-	- 64 bit perl support
+	- 64 bit perl support submitted by Derrik Pates
