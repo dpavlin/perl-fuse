@@ -1013,12 +1013,12 @@ perl_fuse_main(...)
 	CODE:
 	debug = SvIV(ST(0));
 	MY_CXT.threaded = SvIV(ST(1));
-	MY_CXT.handles = MUTABLE_HV(sv_2mortal(MUTABLE_SV(newHV())));
+	MY_CXT.handles = (HV*)(sv_2mortal((SV*)(newHV())));
 	if(MY_CXT.threaded) {
 #ifdef FUSE_USE_ITHREADS
 		master_interp = aTHX;
 		MUTEX_INIT(&MY_CXT.mutex);
-		SvSHARE(MUTABLE_SV(MY_CXT.handles));
+		SvSHARE((SV*)(MY_CXT.handles));
 #else
 		fprintf(stderr,"FUSE warning: Your script has requested multithreaded "
 		               "mode, but your perl was not built with a supported "
