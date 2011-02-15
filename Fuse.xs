@@ -30,15 +30,28 @@ START_MY_CXT;
 
 #ifdef FUSE_USE_ITHREADS
 tTHX master_interp = NULL;
-# define FUSE_CONTEXT_PRE dTHX; if(!aTHX) {                   \
-	dMY_CXT_INTERP(master_interp);                            \
-	if(MY_CXT.threaded) {                                     \
-		MUTEX_LOCK(&MY_CXT.mutex);                            \
-		PERL_SET_CONTEXT(master_interp);                      \
-		my_perl = perl_clone(MY_CXT.self, CLONEf_CLONE_HOST); \
-		MUTEX_UNLOCK(&MY_CXT.mutex);                          \
-	}                                                         \
-} { dMY_CXT; dSP;
+
+#define CLONE_INTERP(parent) S_clone_interp(parent)
+tTHX S_clone_interp(tTHX parent) {
+	dMY_CXT_INTERP(parent);
+	if(MY_CXT.threaded) {
+		MUTEX_LOCK(&MY_CXT.mutex);
+		PERL_SET_CONTEXT(parent);
+		dTHX;
+#if (PERL_VERSION > 10) || (PERL_VERSION == 10 && PERL_SUBVERSION >= 1)
+		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST);
+#else
+		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST | CLONEf_KEEP_PTR_TABLE);
+		ptr_table_free(PL_ptr_table);
+		PL_ptr_table = NULL;
+#endif
+		MUTEX_UNLOCK(&MY_CXT.mutex);
+		return child;
+	}
+	return NULL;
+}
+
+# define FUSE_CONTEXT_PRE dTHX; if(!aTHX) aTHX = CLONE_INTERP(master_interp); { dMY_CXT; dSP;
 # define FUSE_CONTEXT_POST }
 #else
 # define FUSE_CONTEXT_PRE dTHX; dMY_CXT; dSP;
@@ -956,15 +969,7 @@ CLONE(...)
 		MY_CXT_CLONE;
 		tTHX parent = MY_CXT.self;
 		MY_CXT.self = my_perl;
-#if (PERL_VERSION < 13) || (PERL_VERSION == 13 && PERL_SUBVERSION <= 1)
-		CLONE_PARAMS clone_param;
-		clone_param.flags = 0;
-		for(i=0;i<N_CALLBACKS;i++) {
-			if(MY_CXT.callback[i]) {
-				MY_CXT.callback[i] = sv_dup(MY_CXT.callback[i], &clone_param);
-			}
-		}
-#else
+#if (PERL_VERSION > 13) || (PERL_VERSION == 13 && PERL_SUBVERSION >= 2)
 		CLONE_PARAMS *clone_param = clone_params_new(parent, aTHX);
 		for(i=0;i<N_CALLBACKS;i++) {
 			if(MY_CXT.callback[i]) {
@@ -972,6 +977,24 @@ CLONE(...)
 			}
 		}
 		clone_params_del(clone_param);
+#else
+# if (PERL_VERSION < 10) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 0)
+		// CLONE entered without a pointer table, so we can't safely clone static data
+		if(!PL_ptr_table) {
+			for(i=0;i<N_CALLBACKS;i++) {
+				MY_CXT.callback[i] = NULL;
+			}
+		} else
+# endif
+		{
+			CLONE_PARAMS clone_param;
+			clone_param.flags = 0;
+			for(i=0;i<N_CALLBACKS;i++) {
+				if(MY_CXT.callback[i]) {
+					MY_CXT.callback[i] = sv_dup(MY_CXT.callback[i], &clone_param);
+				}
+			}
+		}
 #endif
 
 SV*
