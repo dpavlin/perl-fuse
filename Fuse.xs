@@ -40,7 +40,7 @@ tTHX master_interp = NULL;
 } { dMY_CXT; dSP;
 # define FUSE_CONTEXT_POST }
 #else
-# define FUSE_CONTEXT_PRE dMY_CXT; dSP;
+# define FUSE_CONTEXT_PRE dTHX; dMY_CXT; dSP;
 # define FUSE_CONTEXT_POST
 #endif
 
