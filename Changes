@@ -62,3 +62,6 @@ Revision history for Perl extension Fuse.
 0.10_1
 	- cleanup options
 	- 64 bit perl support submitted by Derrik Pates
+
+0.11
+	- make static callbacks thread-safe, contributed by Daniel Frett
