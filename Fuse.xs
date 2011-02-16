@@ -969,33 +969,34 @@ CLONE(...)
 		MY_CXT_CLONE;
 		tTHX parent = MY_CXT.self;
 		MY_CXT.self = my_perl;
-#if (PERL_VERSION > 13) || (PERL_VERSION == 13 && PERL_SUBVERSION >= 2)
-		CLONE_PARAMS *clone_param = clone_params_new(parent, aTHX);
-		for(i=0;i<N_CALLBACKS;i++) {
-			if(MY_CXT.callback[i]) {
-				MY_CXT.callback[i] = sv_dup(MY_CXT.callback[i], clone_param);
-			}
-		}
-		clone_params_del(clone_param);
-#else
-# if (PERL_VERSION < 10) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 0)
-		// CLONE entered without a pointer table, so we can't safely clone static data
+#if (PERL_VERSION < 10) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 0)
+		/* CLONE entered without a pointer table, so we can't safely clone static data */
 		if(!PL_ptr_table) {
 			for(i=0;i<N_CALLBACKS;i++) {
 				MY_CXT.callback[i] = NULL;
 			}
+			MY_CXT.handles = newHV();
 		} else
-# endif
-		{
-			CLONE_PARAMS clone_param;
-			clone_param.flags = 0;
-			for(i=0;i<N_CALLBACKS;i++) {
-				if(MY_CXT.callback[i]) {
-					MY_CXT.callback[i] = sv_dup(MY_CXT.callback[i], &clone_param);
-				}
-			}
-		}
 #endif
+		{
+			CLONE_PARAMS *clone_param;
+#if (PERL_VERSION > 13) || (PERL_VERSION == 13 && PERL_SUBVERSION >= 2)
+			clone_param = clone_params_new(parent, aTHX);
+#else
+			CLONE_PARAMS raw_param;
+			raw_param.flags = 0;
+			raw_param.proto_perl = parent;
+			raw_param.stashes = (AV*)sv_2mortal((SV*)newAV());
+			clone_param = &raw_param;
+#endif
+			for(i=0;i<N_CALLBACKS;i++) {
+				MY_CXT.callback[i] = sv_dup(MY_CXT.callback[i], clone_param);
+			}
+			MY_CXT.handles = (HV*)sv_dup((SV*)MY_CXT.handles, clone_param);
+#if (PERL_VERSION > 13) || (PERL_VERSION == 13 && PERL_SUBVERSION >= 2)
+			clone_params_del(clone_param);
+#endif
+		}
 
 SV*
 fuse_get_context()
