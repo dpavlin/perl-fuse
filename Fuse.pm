@@ -77,7 +77,7 @@ bootstrap Fuse $VERSION;
 sub main {
 	my @names = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
 			rename link chmod chown truncate utime open read write statfs
-			flush release fsync setxattr getxattr listxattr removexattr);
+			flush release fsync setxattr getxattr listxattr removexattr opendir readdir releasedir fsyncdir);
 	my @subs = map {undef} @names;
 	my @validOpts = qw(ro allow_other default_permissions fsname use_ino nonempty);
 	my $tmp = 0;

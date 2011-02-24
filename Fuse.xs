@@ -36,7 +36,7 @@ static inline void create_perl_context() {
 #define DEBUGf(a...)
 #endif
 
-#define N_CALLBACKS 25
+#define N_CALLBACKS 29
 SV *_PLfuse_callbacks[N_CALLBACKS];
 
 int _PLfuse_getattr(const char *file, struct stat *result) {
@@ -115,13 +115,47 @@ int _PLfuse_readlink(const char *file,char *buf,size_t buflen) {
 	return rv;
 }
 
-#if 0
-/*
- * This doesn't yet work... we alwas get ENOSYS when trying to use readdir().
- * Well, of course, getdir() is fine as well.
- */
- int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil, off_t off, struct fuse_file_info *fi) {
-#endif
+int _PLfuse_opendir(const char *file, struct fuse_file_info *info) {
+    croak("opendir NOT IMPLEMENTED");
+}
+int _PLfuse_releasedir(const char *file, struct fuse_file_info *info) {
+    croak("releasedir NOT IMPLEMENTED");
+}
+int _PLfuse_fsyncdir(const char *file, struct fuse_file_info *info) {
+    croak("fsyncdir NOT IMPLEMENTED");
+}
+
+int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil, off_t off, struct fuse_file_info *fi) {
+	int prv, rv, offset;
+    SV *entry;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("readdir begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(sv_2mortal(newSViv(off)));
+	PUTBACK;
+	prv = call_sv(_PLfuse_callbacks[26],G_ARRAY);
+	SPAGAIN;
+	if(3 == prv) {
+        rv      = POPi;
+        offset  = POPi;
+        entry   = POPs;
+        if(SvOK(entry))
+            dirfil(dirh,SvPV_nolen(entry),NULL,offset);
+	} else {
+		fprintf(stderr,"readdir() handler didn't return 2 values!\n");
+		rv = -ENOSYS;
+	}
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("readdir end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
 int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	int prv, rv;
 	FUSE_CONTEXT_PRE;
@@ -783,9 +817,6 @@ struct fuse_operations _available_ops = {
 getattr:		_PLfuse_getattr,
 readlink:		_PLfuse_readlink,
 getdir:			_PLfuse_getdir,
-#if 0
-readdir:		_PLfuse_readdir,
-#endif
 mknod:			_PLfuse_mknod,
 mkdir:			_PLfuse_mkdir,
 unlink:			_PLfuse_unlink,
@@ -808,6 +839,10 @@ setxattr:		_PLfuse_setxattr,
 getxattr:		_PLfuse_getxattr,
 listxattr:		_PLfuse_listxattr,
 removexattr:		_PLfuse_removexattr,
+opendir:		_PLfuse_opendir,
+readdir:		_PLfuse_readdir,
+releasedir:		_PLfuse_releasedir,
+fsyncdir:		_PLfuse_fsyncdir,
 };
 
 MODULE = Fuse		PACKAGE = Fuse
@@ -836,14 +871,14 @@ perl_fuse_main(...)
 	PREINIT:
 	struct fuse_operations fops = 
 		{NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-		 NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
+		 NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 	int i, fd, debug, threaded;
 	char *mountpoint;
 	char *mountopts;
 	struct fuse_args margs = FUSE_ARGS_INIT(0, NULL);
 	struct fuse_args fargs = FUSE_ARGS_INIT(0, NULL);
 	INIT:
-	if(items != 29) {
+	if(items != 4+N_CALLBACKS) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
 		XSRETURN_UNDEF;
 	}
