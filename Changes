@@ -65,3 +65,4 @@ Revision history for Perl extension Fuse.
 
 0.11
 	- make static callbacks thread-safe, contributed by Daniel Frett
+	- readdir implmenentation contributed by Alex Sudakov RT #55953
