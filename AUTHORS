@@ -14,3 +14,4 @@ jaslong from CPAN::Forum - documentation patch for fuse_get_context
 Justin Fletcher <gerph@gerph.org> - added file handles on open files
 Derrik Pates <demon@now.ai> - added 64-bit support and fuse 2.6 binding
 Daniel Frett <daniel.frett@ccci.org> - make static callbacks thread-safe
+Alex Sudakov <cygakob@gmail.com> - fixes for readdir support
