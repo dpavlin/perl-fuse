@@ -77,7 +77,7 @@ bootstrap Fuse $VERSION;
 sub main {
 	my @names = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
 			rename link chmod chown truncate utime open read write statfs
-			flush release fsync setxattr getxattr listxattr removexattr);
+			flush release fsync setxattr getxattr listxattr removexattr opendir readdir releasedir fsyncdir);
 	my @subs = map {undef} @names;
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
