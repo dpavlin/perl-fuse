@@ -292,6 +292,11 @@ This is used to obtain directory listings.  It's opendir(), readdir(), filldir()
 
 example rv: return ('.', 'a', 'b', 0);
 
+=head3 readdir
+
+Arguments: Directory name, offset
+Returns: filename, offset to the next dirent, numeric errno 0 or -ENOENT()
+
 =head3 mknod
 
 Arguments:  Filename, numeric modes, numeric device
