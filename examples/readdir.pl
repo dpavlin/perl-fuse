@@ -55,20 +55,11 @@ sub e_getattr {
 	return ($dev,$ino,$modes,$nlink,$uid,$gid,$rdev,$size,$atime,$mtime,$ctime,$blksize,$blocks);
 }
 
-sub e_getdir {
-	# return as many text filenames as you like, followed by the retval.
-	print((scalar keys %files)."\n");
-	return (keys %files),0;
-}
-
 sub e_readdir {
-use Data::Dumper;
-print Dumper(\@_);
     my ($path,$offset)  = @_;
-	# return as many text filenames as you like, followed by the retval.
-	print((scalar keys %files)."\n");
-    my @a   = keys %files;
-	return ($offset<0xFFFF ? $a[0] : undef),1+$offset,0;
+	print "readdir $path $offset\n";
+	my @a = keys %files;
+	return $a[$offset], 1 + $offset, $offset < $#a ? 0 : -ENOENT();
 }
 
 sub e_open {
@@ -107,7 +98,6 @@ Fuse::main(
 	mountpoint=>$mountpoint,
 	getattr=>"main::e_getattr",
 #	getdir =>"main::e_getdir",
-#	getdir =>"main::e_readdir",
 	readdir=>"main::e_readdir",
 	open   =>"main::e_open",
 	statfs =>"main::e_statfs",
