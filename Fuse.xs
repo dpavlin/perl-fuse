@@ -85,7 +85,7 @@ SV *S_fh_get_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi) {
 
 void S_fh_release_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi) {
 	if(fi->fh != 0) {
-		(void)hv_delete_ent(MY_CXT.handles, FH_KEY(fi), 0, G_DISCARD);
+		(void)hv_delete_ent(MY_CXT.handles, FH_KEY(fi), G_DISCARD, 0);
 		fi->fh = 0;
 	}
 }
