@@ -77,7 +77,7 @@ SV *S_fh_get_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi) {
 		HE *he;
 		if((he = hv_fetch_ent(MY_CXT.handles, FH_KEY(fi), 0, 0))) {
 			val = HeVAL(he);
-			mg_get(val);
+			SvGETMAGIC(val);
 		}
 	}
 	return val;
@@ -99,8 +99,11 @@ void S_fh_store_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi, SV *sv) {
 #endif
 		MAGIC *mg = mg_find(sv, PERL_MAGIC_shared_scalar);
 		fi->fh = mg ? PTR2IV(mg->mg_ptr) : PTR2IV(sv);
-		(void)hv_store_ent(MY_CXT.handles, FH_KEY(fi), sv, 0);
-		mg_set(sv);
+		if(hv_store_ent(MY_CXT.handles, FH_KEY(fi), SvREFCNT_inc(sv), 0) == NULL) {
+			SvREFCNT_dec(sv);
+			return;
+		}
+		SvSETMAGIC(sv);
 	}
 }
 
