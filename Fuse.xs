@@ -97,11 +97,10 @@ void S_fh_store_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi, SV *sv) {
 			SvSHARE(sv);
 		}
 #endif
-		MAGIC *mg = mg_find(sv, PERL_MAGIC_shared_scalar);
+		MAGIC *mg = (SvTYPE(sv) == SVt_PVMG) ? mg_find(sv, PERL_MAGIC_shared_scalar) : NULL;
 		fi->fh = mg ? PTR2IV(mg->mg_ptr) : PTR2IV(sv);
 		if(hv_store_ent(MY_CXT.handles, FH_KEY(fi), SvREFCNT_inc(sv), 0) == NULL) {
 			SvREFCNT_dec(sv);
-			return;
 		}
 		SvSETMAGIC(sv);
 	}
