@@ -511,23 +511,14 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 		/* Success, so copy the file handle which they returned */
 #if FUSE_VERSION >= 24
 		SV **svp;
-		svp = hv_fetch(fihash, "direct_io", 9, 0);
-		if (svp != NULL)
-		{
-			fi->direct_io = SvIV(*svp);
-		}
-		svp = hv_fetch(fihash, "keep_cache", 10, 0);
-		if (svp != NULL)
-		{
-			fi->keep_cache = SvIV(*svp);
-		}
+		if ((svp = hv_fetch(fihash, "direct_io",    9, 0)))
+			fi->direct_io   = SvIV(*svp);
+		if ((svp = hv_fetch(fihash, "keep_cache",  10, 0)))
+			fi->keep_cache  = SvIV(*svp);
 #endif
 #if FUSE_VERSION >= 29
-		svp = hv_fetch(fihash, "nonseekable", 11, 0);
-		if (svp != NULL)
-		{
-			fi->nonseekable = SvIV(*svp);
-		}
+		if ((svp = hv_fetch(fihash, "nonseekable", 11, 0)))
+ 			fi->nonseekable = SvIV(*svp);
 #endif
 	}
 	FREETMPS;
@@ -538,7 +529,8 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	return rv;
 }
 
-int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct fuse_file_info *fi) {
+int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off,
+		struct fuse_file_info *fi) {
 	int rv;
 #ifndef PERL_HAS_64BITINT
 	char *temp;
@@ -548,7 +540,7 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct 
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
-	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
 	XPUSHs(sv_2mortal(newSViv(buflen)));
 #ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
@@ -598,7 +590,7 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
-	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
 	XPUSHs(sv_2mortal(newSVpvn(buf,buflen)));
 #ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
@@ -673,7 +665,7 @@ int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
-	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
 	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[18],G_SCALAR);
@@ -695,7 +687,7 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
-	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
@@ -719,7 +711,7 @@ int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
-	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
@@ -1470,6 +1462,7 @@ mknod:			_PLfuse_mknod,
 mkdir:			_PLfuse_mkdir,
 unlink:			_PLfuse_unlink,
 rmdir:			_PLfuse_rmdir,
+symlink:		_PLfuse_symlink,
 rename:			_PLfuse_rename,
 link:			_PLfuse_link,
 chmod:			_PLfuse_chmod,
@@ -1567,9 +1560,9 @@ fuse_get_context()
 	fc = fuse_get_context();
 	if(fc) {
 		HV *hash = newHV();
-		(void) hv_store(hash, "uid", 3, newSViv(fc->uid), 0);
-		(void) hv_store(hash, "gid", 3, newSViv(fc->gid), 0);
-		(void) hv_store(hash, "pid", 3, newSViv(fc->pid), 0);
+		(void) hv_store(hash, "uid",   3, newSViv(fc->uid), 0);
+		(void) hv_store(hash, "gid",   3, newSViv(fc->gid), 0);
+		(void) hv_store(hash, "pid",   3, newSViv(fc->pid), 0);
 		if (fc->private_data)
 			(void) hv_store(hash, "private", 7, fc->private_data, 0);
 #if FUSE_VERSION >= 28
