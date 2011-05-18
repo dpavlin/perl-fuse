@@ -1074,7 +1074,7 @@ perl_fuse_main(...)
 	struct fuse_chan *fc;
 	dMY_CXT;
 	INIT:
-	if(items != 4+N_CALLBACKS) {
+	if(items != N_CALLBACKS + 5) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
 		XSRETURN_UNDEF;
 	}
@@ -1096,11 +1096,20 @@ perl_fuse_main(...)
 	}
 	mountpoint = SvPV_nolen(ST(2));
 	mountopts = SvPV_nolen(ST(3));
+#if FUSE_VERSION >= 28
+	fops.flag_nullpath_ok = SvIV(ST(4));
+#endif /* FUSE_VERSION >= 28 */
 	for(i=0;i<N_CALLBACKS;i++) {
-		SV *var = ST(i+4);
+		SV *var = ST(i+5);
 		/* allow symbolic references, or real code references. */
 		if(SvOK(var) && (SvPOK(var) || (SvROK(var) && SvTYPE(SvRV(var)) == SVt_PVCV))) {
 			void **tmp1 = (void**)&_available_ops, **tmp2 = (void**)&fops;
+			/* Dirty hack, to keep anything from overwriting the
+			 * flag area with a pointer. There should never be
+			 * anything passed as 'junk', but this prevents
+			 * someone from doing it and screwing things up... */
+			if (i == 38)
+				continue;
 			tmp2[i] = tmp1[i];
 			MY_CXT.callback[i] = var;
 		} else if(SvOK(var)) {

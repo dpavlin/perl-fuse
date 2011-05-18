@@ -81,8 +81,14 @@ sub main {
 	my @subs = map {undef} @names;
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
-	my @otherargs = qw(debug threaded mountpoint mountopts);
-	my %otherargs = (debug=>0, threaded=>0, mountpoint=>"", mountopts=>"");
+	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok);
+	my %otherargs = (
+			  debug		=> 0,
+			  threaded	=> 0,
+			  mountpoint	=> "",
+			  mountopts	=> "",
+			  nullpath_ok	=> 0,
+			);
 	while(my $name = shift) {
 		my ($subref) = shift;
 		if(exists($otherargs{$name})) {
@@ -225,6 +231,19 @@ you're using are also thread-safe.
 (If enabled, this option will cause a warning if your perl interpreter was not
 built with USE_ITHREADS, or if you have failed to use threads or
 threads::shared.)
+
+=back
+
+nullpath_ok => boolean
+
+=over 1
+
+This flag tells Fuse to not pass paths for functions that operate on file
+or directory handles. This will yield empty path parameters for functions
+including read, write, flush, release, fsync, readdir, releasedir,
+fsyncdir, truncate, fgetattr and lock. If you use this, you must return
+file/directory handles from open, opendir and create. Default is 0 (off).
+Only effective on Fuse 2.8 and up; with earlier versions, this does nothing.
 
 =back
 
