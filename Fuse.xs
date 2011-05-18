@@ -517,11 +517,11 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	fi->fh = 0; /* Ensure it starts with 0 - important if they don't set it */
 	fihash = newHV();
 #if FUSE_VERSION >= 24
-	hv_store(fihash, "direct_io", 9, newSViv(fi->direct_io), 0);
-	hv_store(fihash, "keep_cache", 10, newSViv(fi->keep_cache), 0);
+	(void) hv_store(fihash, "direct_io", 9, newSViv(fi->direct_io), 0);
+	(void) hv_store(fihash, "keep_cache", 10, newSViv(fi->keep_cache), 0);
 #endif
 #if FUSE_VERSION >= 29
-	hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
+	(void) hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
 #endif
 	XPUSHs(sv_2mortal(newRV_noinc((SV*) fihash)));
 	/* All hashref things done */
