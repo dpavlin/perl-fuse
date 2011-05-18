@@ -1615,9 +1615,15 @@ fuse_get_context()
 	fc = fuse_get_context();
 	if(fc) {
 		HV *hash = newHV();
-		hv_store(hash, "uid", 3, newSViv(fc->uid), 0);
-		hv_store(hash, "gid", 3, newSViv(fc->gid), 0);
-		hv_store(hash, "pid", 3, newSViv(fc->pid), 0);
+		(void) hv_store(hash, "uid", 3, newSViv(fc->uid), 0);
+		(void) hv_store(hash, "gid", 3, newSViv(fc->gid), 0);
+		(void) hv_store(hash, "pid", 3, newSViv(fc->pid), 0);
+		if (fc->private_data)
+			(void) hv_store(hash, "private", 7, fc->private_data, 0);
+#if FUSE_VERSION >= 28
+		(void) hv_store(hash, "umask", 5, newSViv(fc->umask), 0);
+#endif /* FUSE_VERSION >= 28 */
+
 		RETVAL = newRV_noinc((SV*)hash);
 	} else {
 		XSRETURN_UNDEF;
