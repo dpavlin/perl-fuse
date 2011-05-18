@@ -1053,6 +1053,13 @@ fuse_get_context()
 	OUTPUT:
 	RETVAL
 
+SV *
+fuse_version()
+	CODE:
+	RETVAL = newSVpvf("%d.%d", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
+	OUTPUT:
+	RETVAL
+
 void
 perl_fuse_main(...)
 	PREINIT:

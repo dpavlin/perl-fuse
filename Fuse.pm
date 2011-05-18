@@ -21,7 +21,7 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context) ],
+		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version) ],
 		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ]
 		    );
 
@@ -236,6 +236,12 @@ threads::shared.)
  my $caller_pid = fuse_get_context()->{"pid"};
  
 Access context information about the current Fuse operation. 
+
+=head3 Fuse::fuse_version
+
+Indicates the Fuse version in use; more accurately, indicates the version
+of the Fuse API in use at build time. Returned as a decimal value; i.e.,
+for Fuse API v2.6, will return "2.6".
 
 =head2 FUNCTIONS YOUR FILESYSTEM MAY IMPLEMENT
 
