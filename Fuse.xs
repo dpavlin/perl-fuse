@@ -1075,8 +1075,7 @@ perl_fuse_main(...)
 	int i, debug;
 	char *mountpoint;
 	char *mountopts;
-	struct fuse_args margs = FUSE_ARGS_INIT(0, NULL);
-	struct fuse_args fargs = FUSE_ARGS_INIT(0, NULL);
+	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 	struct fuse_chan *fc;
 	dMY_CXT;
 	INIT:
@@ -1132,31 +1131,24 @@ perl_fuse_main(...)
 	 * foremost, real C argc/argv would be good to get at...
 	 */
 	if (mountopts &&
-	    (fuse_opt_add_arg(&margs, "") == -1 ||
-	     fuse_opt_add_arg(&margs, "-o") == -1 ||
-	     fuse_opt_add_arg(&margs, mountopts) == -1)) {
-		fuse_opt_free_args(&margs);
+	    (fuse_opt_add_arg(&args, "") == -1 ||
+	     fuse_opt_add_arg(&args, "-o") == -1 ||
+	     fuse_opt_add_arg(&args, mountopts) == -1)) {
+		fuse_opt_free_args(&args);
 		croak("out of memory\n");
 	}
-	fc = fuse_mount(mountpoint,&margs);
-	fuse_opt_free_args(&margs);        
+	if (debug && fuse_opt_add_arg(&args, "-d") == -1) {
+		fuse_opt_free_args(&args);
+		croak("out of memory\n");
+	}
+	fc = fuse_mount(mountpoint,&args);
 	if (fc == NULL)
 		croak("could not mount fuse filesystem!\n");
-        if (debug) {
-		if ( fuse_opt_add_arg(&fargs, "") == -1 ||
-			fuse_opt_add_arg(&fargs, "-d") == -1) {
-			fuse_opt_free_args(&fargs);
-			croak("out of memory\n");
-		}
-	} else {
-		if (fuse_opt_add_arg(&fargs, "") == -1)
-			croak("out of memory\n");
-	}
 #ifndef __NetBSD__
 	if(MY_CXT.threaded) {
-		fuse_loop_mt(fuse_new(fc,&fargs,&fops,sizeof(fops),NULL));
+		fuse_loop_mt(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
 	} else
 #endif
-		fuse_loop(fuse_new(fc,&fargs,&fops,sizeof(fops),NULL));
+		fuse_loop(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
 	fuse_unmount(mountpoint,fc);
-	fuse_opt_free_args(&fargs);
+	fuse_opt_free_args(&args);
