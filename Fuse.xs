@@ -238,10 +238,7 @@ int _PLfuse_mknod (const char *file, mode_t mode, dev_t dev) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[3],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -262,10 +259,7 @@ int _PLfuse_mkdir (const char *file, mode_t mode) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[4],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -286,10 +280,7 @@ int _PLfuse_unlink (const char *file) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[5],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -309,10 +300,7 @@ int _PLfuse_rmdir (const char *file) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[6],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -333,10 +321,7 @@ int _PLfuse_symlink (const char *file, const char *new) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[7],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -357,10 +342,7 @@ int _PLfuse_rename (const char *file, const char *new) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[8],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -381,10 +363,7 @@ int _PLfuse_link (const char *file, const char *new) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[9],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -405,10 +384,7 @@ int _PLfuse_chmod (const char *file, mode_t mode) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[10],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -430,10 +406,7 @@ int _PLfuse_chown (const char *file, uid_t uid, gid_t gid) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[11],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -456,17 +429,15 @@ int _PLfuse_truncate (const char *file, off_t off) {
 #ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
 #else
-	asprintf(&temp, "%llu", off);
+	if (asprintf(&temp, "%llu", off) == -1)
+		croak("Memory allocation failure!");
 	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
 	free(temp);
 #endif
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[12],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -488,10 +459,7 @@ int _PLfuse_utime (const char *file, struct utimbuf *uti) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[13],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -585,7 +553,8 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off, struct 
 #ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
 #else
-	asprintf(&temp, "%llu", off);
+	if (asprintf(&temp, "%llu", off) == -1)
+		croak("Memory allocation failure!");
 	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
 	free(temp);
 #endif
@@ -634,7 +603,8 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 #ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
 #else
-	asprintf(&temp, "%llu", off);
+	if (asprintf(&temp, "%llu", off) == -1)
+		croak("Memory allocation failure!");
 	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
 	free(temp);
 #endif
@@ -642,10 +612,7 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[16],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -711,10 +678,7 @@ int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[18],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -737,10 +701,7 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[19],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FH_RELEASEHANDLE(fi);
 	FREETMPS;
 	LEAVE;
@@ -764,10 +725,7 @@ int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[20],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -790,10 +748,7 @@ int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[21],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -921,10 +876,7 @@ int _PLfuse_removexattr (const char *file, const char *name) {
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[24],G_SCALAR);
 	SPAGAIN;
-	if(rv)
-		rv = POPi;
-	else
-		rv = 0;
+	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
