@@ -17,7 +17,17 @@
 /* Global Data */
 
 #define MY_CXT_KEY "Fuse::_guts" XS_VERSION
-#define N_CALLBACKS 29
+/* #if FUSE_VERSION >= 28
+# define N_CALLBACKS 41 */
+#if FUSE_VERSION >= 26
+# define N_CALLBACKS 38
+#elif FUSE_VERSION >= 25
+# define N_CALLBACKS 35
+#elif FUSE_VERSION >= 23
+# define N_CALLBACKS 31
+#else
+# define N_CALLBACKS 25
+#endif
 
 typedef struct {
 	SV *callback[N_CALLBACKS];
@@ -178,47 +188,6 @@ int _PLfuse_readlink(const char *file,char *buf,size_t buflen) {
 	buf[buflen-1] = 0;
 	PUTBACK;
 	DEBUGf("readlink end: %i\n",rv);
-	FUSE_CONTEXT_POST;
-	return rv;
-}
-
-int _PLfuse_opendir(const char *file, struct fuse_file_info *info) {
-    croak("opendir NOT IMPLEMENTED");
-}
-int _PLfuse_releasedir(const char *file, struct fuse_file_info *info) {
-    croak("releasedir NOT IMPLEMENTED");
-}
-int _PLfuse_fsyncdir(const char *file, struct fuse_file_info *info) {
-    croak("fsyncdir NOT IMPLEMENTED");
-}
-
-int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil, off_t off, struct fuse_file_info *fi) {
-	int prv, rv, offset;
-    SV *entry;
-	FUSE_CONTEXT_PRE;
-	DEBUGf("readdir begin\n");
-	ENTER;
-	SAVETMPS;
-	PUSHMARK(SP);
-	XPUSHs(sv_2mortal(newSVpv(file,0)));
-	XPUSHs(sv_2mortal(newSViv(off)));
-	PUTBACK;
-	prv = call_sv(MY_CXT.callback[26],G_ARRAY);
-	SPAGAIN;
-	if(3 == prv) {
-        rv      = POPi;
-        offset  = POPi;
-        entry   = POPs;
-        if(SvOK(entry))
-            dirfil(dirh,SvPV_nolen(entry),NULL,offset);
-	} else {
-		fprintf(stderr,"readdir() handler didn't return 2 values!\n");
-		rv = -ENOSYS;
-	}
-	FREETMPS;
-	LEAVE;
-	PUTBACK;
-	DEBUGf("readdir end: %i\n",rv);
 	FUSE_CONTEXT_POST;
 	return rv;
 }
@@ -964,6 +933,583 @@ int _PLfuse_removexattr (const char *file, const char *name) {
 	return rv;
 }
 
+#if FUSE_VERSION >= 23
+int _PLfuse_opendir(const char *file, struct fuse_file_info *fi) {
+	int rv;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("opendir begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	fi->fh = 0; /* Ensure it starts with 0 - important if they don't set it */
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[25], G_ARRAY);
+	SPAGAIN;
+	if (rv) {
+		if (rv > 1) {
+                        FH_STOREHANDLE(fi, POPs);
+		}
+		rv = POPi;
+	} else
+		rv = 0;
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("opendir end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+
+}
+
+int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
+                    off_t off, struct fuse_file_info *fi) {
+	int prv = 0, rv;
+	SV *sv, **svp, **swp;
+	AV *av, *av2;
+	struct stat st;
+	bool st_filled = 0;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
+	FUSE_CONTEXT_PRE;
+	DEBUGf("readdir begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(off)));
+#else
+	if (asprintf(&temp, "%llu", off) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+	prv = call_sv(MY_CXT.callback[26],G_ARRAY);
+	SPAGAIN;
+	if (prv) {
+		/* Should yield the bottom of the current stack... */
+		swp = &TOPs - prv + 1;
+		rv = POPi;
+		memset(&st, 0, sizeof(struct stat));
+		/* Sort of a hack to walk the stack in order, instead of reverse
+		 * order - trying to explain to potential users why they need to
+		 * reverse the order of this array would be confusing, at best. */
+		while (swp <= &TOPs) {
+			sv = *(swp++);
+			if (!SvROK(sv) && SvPOK(sv))
+			/* Just a bare SV (probably a string; hopefully a string) */
+				dirfil(dirh, SvPVx_nolen(sv), NULL, 0);
+			else if (SvROK(sv) && SvTYPE(av = (AV *)SvRV(sv)) == SVt_PVAV) {
+				if (av_len(av) >= 2) {
+					/* The third element of the array should be the args that
+					 * would otherwise go to getattr(); a lot of filesystems
+					 * will, or at least can, return that info as part of the
+					 * enumeration process... */
+					svp = av_fetch(av, 2, FALSE);
+					if (SvROK(*svp) &&
+							SvTYPE(av2 = (AV *)SvRV(*svp)) == SVt_PVAV &&
+							av_len(av2) == 12) {
+						st.st_dev     = SvIV(*(av_fetch(av2,  0, FALSE)));
+						st.st_ino     = SvIV(*(av_fetch(av2,  1, FALSE)));
+						st.st_mode    = SvIV(*(av_fetch(av2,  2, FALSE)));
+						st.st_nlink   = SvIV(*(av_fetch(av2,  3, FALSE)));
+						st.st_uid     = SvIV(*(av_fetch(av2,  4, FALSE)));
+						st.st_gid     = SvIV(*(av_fetch(av2,  5, FALSE)));
+						st.st_rdev    = SvIV(*(av_fetch(av2,  6, FALSE)));
+						st.st_size    = SvNV(*(av_fetch(av2,  7, FALSE)));
+						st.st_atime   = SvIV(*(av_fetch(av2,  8, FALSE)));
+						st.st_mtime   = SvIV(*(av_fetch(av2,  9, FALSE)));
+						st.st_ctime   = SvIV(*(av_fetch(av2, 10, FALSE)));
+						st.st_blksize = SvIV(*(av_fetch(av2, 11, FALSE)));
+						st.st_blocks  = SvIV(*(av_fetch(av2, 12, FALSE)));
+						st_filled = 1;
+					}
+					else
+						fprintf(stderr,"Extra SV didn't appear to be correct, ignoring\n");
+					/* For now if the element isn't what we want, just
+					 * quietly ignore it... */
+				}
+				if (av_len(av) >= 1) {
+					char *entryname = SvPVx_nolen(*(av_fetch(av, 1, FALSE)));
+					off_t elemnum = SvNV(*(av_fetch(av, 0, FALSE)));
+					dirfil(dirh, entryname, st_filled ? &st : NULL, elemnum);
+				}
+				if (st_filled) {
+					memset(&st, 0, sizeof(struct stat));
+					st_filled = 0;
+				}
+			}
+			else
+				fprintf(stderr, "ERROR: Unknown entry passed via readdir\n");
+		}
+	} else {
+		fprintf(stderr,"readdir() handler returned nothing!\n");
+		rv = -ENOSYS;
+	}
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("readdir end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+int _PLfuse_releasedir(const char *file, struct fuse_file_info *fi) {
+	int rv;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("releasedir begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[27], G_SCALAR);
+	SPAGAIN;
+	rv = (rv ? POPi : 0);
+	FH_RELEASEHANDLE(fi);
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("releasedir end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+int _PLfuse_fsyncdir(const char *file, int datasync,
+                     struct fuse_file_info *fi) {
+	int rv;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("fsyncdir begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+	XPUSHs(sv_2mortal(newSViv(datasync)));
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[28], G_SCALAR);
+	SPAGAIN;
+	rv = (rv ? POPi : 0);
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("fsyncdir end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+#if FUSE_VERSION >= 26
+void *_PLfuse_init(struct fuse_conn_info *fc)
+#else /* FUSE_VERSION < 26 */
+void *_PLfuse_init(void)
+#endif /* FUSE_VERSION >= 26 */
+{
+	void *rv = NULL;
+	int prv;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("init begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	PUTBACK;
+	prv = call_sv(MY_CXT.callback[29], G_SCALAR);
+	SPAGAIN;
+	if (prv) {
+		rv = POPs;
+		if (rv == &PL_sv_undef)
+			rv = NULL;
+		else
+			rv = SvREFCNT_inc((SV *)rv);
+	}
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("init end: %p\n", rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+void _PLfuse_destroy(void *private_data) {
+	FUSE_CONTEXT_PRE;
+	DEBUGf("destroy begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(private_data ? (SV *)private_data : &PL_sv_undef);
+	PUTBACK;
+	call_sv(MY_CXT.callback[30], G_VOID);
+	SPAGAIN;
+	if (private_data)
+		SvREFCNT_dec((SV *)private_data);
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("init end\n");
+	FUSE_CONTEXT_POST;
+}
+#endif /* FUSE_VERSION >= 23 */
+
+#if FUSE_VERSION >= 25
+int _PLfuse_access(const char *file, int mask) {
+	int rv;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("access begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(sv_2mortal(newSViv(mask)));
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[31], G_SCALAR);
+	SPAGAIN;
+	rv = (rv ? POPi : 0);
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("access end: %d\n", rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+int _PLfuse_create(const char *file, mode_t mode, struct fuse_file_info *fi) {
+	int rv;
+	HV *fihash;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("create begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(sv_2mortal(newSViv(mode)));
+	XPUSHs(sv_2mortal(newSViv(fi->flags)));
+	fi->fh = 0; /* Ensure it starts with 0 - important if they don't set it */
+	/* Create a hashref containing the details from fi
+	 * which we can look at or modify.
+	 */
+	fihash = newHV();
+#if FUSE_VERSION >= 24
+	(void) hv_store(fihash, "direct_io", 9, newSViv(fi->direct_io), 0);
+	(void) hv_store(fihash, "keep_cache", 10, newSViv(fi->keep_cache), 0);
+#endif
+#if FUSE_VERSION >= 29
+	(void) hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
+#endif
+	XPUSHs(sv_2mortal(newRV_noinc((SV*) fihash)));
+	/* All hashref things done */
+
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[32], G_ARRAY);
+	SPAGAIN;
+	if (rv) {
+		if (rv > 1) {
+			FH_STOREHANDLE(fi,POPs);
+		}
+		rv = POPi;
+	}
+	else {
+		fprintf(stderr, "create() handler returned nothing!\n");
+		rv = -ENOSYS;
+	}
+	if (rv == 0) {
+		/* Success, so copy the file handle which they returned */
+#if FUSE_VERSION >= 24
+		SV **svp;
+		svp = hv_fetch(fihash, "direct_io", 9, 0);
+		if (svp != NULL)
+			fi->direct_io = SvIV(*svp);
+		svp = hv_fetch(fihash, "keep_cache", 10, 0);
+		if (svp != NULL)
+			fi->keep_cache = SvIV(*svp);
+#endif
+#if FUSE_VERSION >= 29
+		svp = hv_fetch(fihash, "nonseekable", 11, 0);
+		if (svp != NULL)
+			fi->nonseekable = SvIV(*svp);
+#endif
+	}
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("create end: %d\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+int _PLfuse_ftruncate(const char *file, off_t off, struct fuse_file_info *fi) {
+	int rv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
+	FUSE_CONTEXT_PRE;
+	DEBUGf("ftruncate begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(off)));
+#else
+	if (asprintf(&temp, "%llu", off) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[33],G_SCALAR);
+	SPAGAIN;
+	rv = (rv ? POPi : 0);
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("ftruncate end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+int _PLfuse_fgetattr(const char *file, struct stat *result,
+                     struct fuse_file_info *fi) {
+	int rv;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("fgetattr begin: %s\n",file);
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[34],G_ARRAY);
+	SPAGAIN;
+	if(rv != 13) {
+		if(rv > 1) {
+			fprintf(stderr,"inappropriate number of returned values from getattr\n");
+			rv = -ENOSYS;
+		} else if(rv)
+			rv = POPi;
+		else
+			rv = -ENOENT;
+	} else {
+		result->st_blocks = POPi;
+		result->st_blksize = POPi;
+		result->st_ctime = POPi;
+		result->st_mtime = POPi;
+		result->st_atime = POPi;
+		result->st_size = POPn;	// we pop double here to support files larger than 4Gb (long limit)
+		result->st_rdev = POPi;
+		result->st_gid = POPi;
+		result->st_uid = POPi;
+		result->st_nlink = POPi;
+		result->st_mode = POPi;
+		result->st_ino   = POPi;
+		result->st_dev = POPi;
+		rv = 0;
+	}
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("fgetattr end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+#endif /* FUSE_VERSION >= 25 */
+
+#if FUSE_VERSION >= 26
+int _PLfuse_lock(const char *file, struct fuse_file_info *fi, int cmd,
+                 struct flock *lockinfo) {
+	int rv;
+	HV *lihash;
+	SV *sv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
+	FUSE_CONTEXT_PRE;
+	DEBUGf("lock begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+	XPUSHs(sv_2mortal(newSViv(cmd)));
+	lihash = newHV();
+	if (lockinfo) {
+		(void) hv_store(lihash, "l_type",   6, newSViv(lockinfo->l_type), 0);
+		(void) hv_store(lihash, "l_whence", 8, newSViv(lockinfo->l_whence), 0);
+#ifdef PERL_HAS_64BITINT
+		sv = newSViv(lockinfo->l_start);
+#else
+		if (asprintf(&temp, "%llu", lockinfo->l_start) == -1)
+			croak("Memory allocation failure!");
+		sv = newSVpv(temp, 0);
+		free(temp);
+#endif
+		(void) hv_store(lihash, "l_start",  7, sv, 0);
+#ifdef PERL_HAS_64BITINT
+		sv = newSViv(lockinfo->l_len);
+#else
+		if (asprintf(&temp, "%llu", lockinfo->l_len) == -1)
+			croak("Memory allocation failure!");
+		sv = newSVpv(temp, 0);
+		free(temp);
+#endif
+		(void) hv_store(lihash, "l_len",    5, sv, 0);
+		(void) hv_store(lihash, "l_pid",    5, newSViv(lockinfo->l_pid), 0);
+	}
+	XPUSHs(sv_2mortal(newRV_noinc((SV*) lihash)));
+	XPUSHs(FH_GETHANDLE(fi));
+
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[35],G_SCALAR);
+	SPAGAIN;
+	rv = (rv ? POPi : 0);
+	if (lockinfo && !rv) {
+		/* Need to copy back any altered values from the hash into
+		 * the struct... */
+		SV **svp;
+		if ((svp = hv_fetch(lihash, "l_type",   6, 0)))
+			lockinfo->l_type   = SvIV(*svp);
+		if ((svp = hv_fetch(lihash, "l_whence", 8, 0)))
+			lockinfo->l_whence = SvIV(*svp);
+		if ((svp = hv_fetch(lihash, "l_start",  7, 0)))
+			lockinfo->l_start  = SvNV(*svp);
+		if ((svp = hv_fetch(lihash, "l_len",    5, 0)))
+			lockinfo->l_len    = SvNV(*svp);
+		if ((svp = hv_fetch(lihash, "l_pid",    5, 0)))
+			lockinfo->l_pid    = SvIV(*svp);
+	}
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("lock end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+int _PLfuse_utimens(const char *file, const struct timespec tv[2]) {
+	int rv;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("utimens begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(tv ? sv_2mortal(newSVnv(tv[0].tv_sec + (tv[0].tv_nsec / 1000000000.0))) : &PL_sv_undef);
+	XPUSHs(tv ? sv_2mortal(newSVnv(tv[1].tv_sec + (tv[1].tv_nsec / 1000000000.0))) : &PL_sv_undef);
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[36],G_SCALAR);
+	SPAGAIN;
+	rv = (rv ? POPi : 0);
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("utimens end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+int _PLfuse_bmap(const char *file, size_t blocksize, uint64_t *idx) {
+	int rv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
+	FUSE_CONTEXT_PRE;
+	DEBUGf("bmap begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(sv_2mortal(newSViv(blocksize)));
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(*idx)));
+#else
+	if (asprintf(&temp, "%llu", *idx) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[37],G_ARRAY);
+	SPAGAIN;
+	if (rv > 0 && rv < 3) {
+		if (rv == 2)
+			*idx = POPn;
+		rv = POPi;
+	}
+	else {
+		fprintf(stderr, "bmap(): wrong number of values returned?\n");
+		rv = -ENOSYS;
+	}
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("bmap end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+#endif /* FUSE_VERSION >= 26 */
+
+#if 0
+#if FUSE_VERSION >= 28
+int _PLfuse_ioctl(const char *file, int cmd, void *arg,
+                  struct fuse_file_info *fi, unsigned int flags, void *data) {
+	int rv;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("ioctl begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	XPUSHs(sv_2mortal(newSViv(cmd)));
+	XPUSHs(sv_2mortal(newSViv(flags)));
+	if (_IOC_DIR(cmd) & _IOC_READ)
+		XPUSHs(sv_2mortal(newSVpvn(data, _IOC_SIZE(cmd))));
+	else
+		XPUSHs(&PL_sv_undef);
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[39],G_ARRAY);
+	SPAGAIN;
+	if (_IOC_DIR(cmd) & _IOC_WRITE) {
+		if (rv == 2) {
+			SV *sv = POPs;
+			unsigned int len;
+			char *rdata = SvPV(sv, len);
+			if (len > _IOC_SIZE(cmd)) {
+				fprintf(stderr, "ioctl(): returned data was too large for data area\n");
+				rv = -EFBIG;
+			}
+			else {
+				memset(data, 0, _IOC_SIZE(cmd));
+				memcpy(data, rdata, len);
+			}
+
+			rv--;
+		}
+		else {
+			fprintf(stderr, "ioctl(): ioctl was a write op, but no data was returned from call?\n");
+			rv = -EFAULT;
+		}
+	}
+	if (rv > 0)
+		rv = POPi;
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("ioctl end: %i\n",rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+int _PLfuse_poll(const char *file, struct fuse_file_info *fi,
+                 struct fuse_pollhandle *ph, unsigned *reventsp) {
+
+}
+#endif /* FUSE_VERSION >= 28 */
+#endif
+
 struct fuse_operations _available_ops = {
 getattr:		_PLfuse_getattr,
 readlink:		_PLfuse_readlink,
@@ -972,7 +1518,6 @@ mknod:			_PLfuse_mknod,
 mkdir:			_PLfuse_mkdir,
 unlink:			_PLfuse_unlink,
 rmdir:			_PLfuse_rmdir,
-symlink:		_PLfuse_symlink,
 rename:			_PLfuse_rename,
 link:			_PLfuse_link,
 chmod:			_PLfuse_chmod,
@@ -990,10 +1535,31 @@ setxattr:		_PLfuse_setxattr,
 getxattr:		_PLfuse_getxattr,
 listxattr:		_PLfuse_listxattr,
 removexattr:		_PLfuse_removexattr,
-opendir:		_PLfuse_opendir,
+#if FUSE_VERSION >= 23
+opendir:		_PLfuse_opendir, 
 readdir:		_PLfuse_readdir,
 releasedir:		_PLfuse_releasedir,
 fsyncdir:		_PLfuse_fsyncdir,
+init:			_PLfuse_init,
+destroy:		_PLfuse_destroy,
+#endif /* FUSE_VERSION >= 23 */
+#if FUSE_VERSION >= 25
+access:			_PLfuse_access,
+create:			_PLfuse_create,
+ftruncate:		_PLfuse_ftruncate,
+fgetattr:		_PLfuse_fgetattr,
+#endif /* FUSE_VERSION >= 25 */
+#if FUSE_VERSION >= 26
+lock:			_PLfuse_lock,
+utimens:		_PLfuse_utimens,
+bmap:			_PLfuse_bmap,
+#endif /* FUSE_VERSION >= 26 */
+#if 0
+#if FUSE_VERSION >= 28
+ioctl:			_PLfuse_ioctl,
+poll:			_PLfuse_poll,
+#endif /* FUSE_VERSION >= 28 */
+#endif
 };
 
 MODULE = Fuse		PACKAGE = Fuse
@@ -1069,9 +1635,7 @@ fuse_version()
 void
 perl_fuse_main(...)
 	PREINIT:
-	struct fuse_operations fops = 
-		{NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-		 NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
+	struct fuse_operations fops;
 	int i, debug;
 	char *mountpoint;
 	char *mountopts;
@@ -1083,6 +1647,7 @@ perl_fuse_main(...)
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
 		XSRETURN_UNDEF;
 	}
+	memset(&fops, 0, sizeof(struct fuse_operations));
 	CODE:
 	debug = SvIV(ST(0));
 	MY_CXT.threaded = SvIV(ST(1));

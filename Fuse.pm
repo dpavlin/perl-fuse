@@ -77,7 +77,27 @@ bootstrap Fuse $VERSION;
 sub main {
 	my @names = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
 			rename link chmod chown truncate utime open read write statfs
-			flush release fsync setxattr getxattr listxattr removexattr opendir readdir releasedir fsyncdir);
+			flush release fsync setxattr getxattr listxattr removexattr);
+	my $fuse_version = fuse_version();
+	if ($fuse_version >= 2.3) {
+		push(@names, qw/opendir readdir releasedir fsyncdir init destroy/);
+	}
+	if ($fuse_version >= 2.5) {
+		push(@names, qw/access create ftruncate fgetattr/);
+	}
+	if ($fuse_version >= 2.6) {
+		push(@names, qw/lock utimens bmap/);
+	}
+#	if ($fuse_version >= 2.8) {
+#		# junk doesn't contain a function pointer, and hopefully
+#		# never will; it's a "dead" zone in the struct
+#		# fuse_operations where a flag bit is declared. we don't
+#		# need to concern ourselves with it, and it appears any
+#		# arch with a 64 bit pointer will align everything to
+#		# 8 bytes, making the question of pointer alignment for
+#		# the last 2 wrapper functions no big thing.
+#		push(@names, qw/junk ioctl poll/);
+#	}
 	my @subs = map {undef} @names;
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
@@ -507,6 +527,129 @@ Returns a list: 0 or more text strings (the extended attribute names), followed 
 
 Arguments: Pathname, extended attribute's name
 Returns an errno or 0 on success.
+
+=head3 opendir
+
+Arguments: Pathname of a directory
+Returns an errno, and a directory handle (optional)
+
+Called when opening a directory for reading. If special handling is
+required to open a directory, this operation can be implemented to handle
+that.
+
+=head3 readdir
+
+Arguments: Pathname of a directory, numeric offset, (optional) directory handle
+Returns a list of 0 or more entries, followed by a numeric errno (usually 0).
+The entries can be simple strings (filenames), or arrays containing an
+offset number, the filename, and optionally an array ref containing the
+stat values (as would be returned from getattr()).
+
+This is used to read entries from a directory. It can be used to return just
+entry names like getdir(), or can get a segment of the available entries,
+which requires using array refs and the 2- or 3-item form, with offset values
+starting from 1. If you wish to return the parameters to fill each entry's
+struct stat, but do not wish to do partial entry lists/entry counting, set
+the first element of each array to 0 always.
+
+Note that if this call is implemented, it overrides getdir() ALWAYS.
+
+=head3 releasedir
+
+Arguments: Pathname of a directory, (optional) directory handle
+Returns an errno or 0 on success
+
+Called when there are no more references to an opened directory. Called once
+for each pathname or handle passed to opendir(). Similar to release(), but
+for directories. Accepts a return value, but like release(), the response
+code will not propagate to any corresponding closedir() calls.
+
+=head3 fsyncdir
+
+Arguments: Pathname of a directory, numeric flags, (optional) directory handle
+Returns an errno or 0 on success.
+
+Called to synchronize any changes to a directory's contents. If flag is
+non-zero, only synchronize user data, otherwise synchronize user data and
+metadata.
+
+=head3 init
+
+Arguments: None.
+Returns (optionally) an SV to be passed as private_data via fuse_get_context().
+
+=head3 destroy
+
+Arguments: (optional) private data SV returned from init(), if any.
+Returns nothing.
+
+=head3 access
+
+Arguments: Pathname, access mode flags
+Returns an errno or 0 on success.
+
+Determine if the user attempting to access the indicated file has access to
+perform the requested actions. The user ID can be determined by calling
+fuse_get_context(). See access(2) for more information.
+
+=head3 create
+
+Arguments: Pathname, create mask, open mode flags
+Returns errno or 0 on success, and (optional) file handle.
+
+Create a file with the path indicated, then open a handle for reading and/or
+writing with the supplied mode flags. Can also return a file handle like
+open() as part of the call.
+
+=head3 ftruncate
+
+Arguments: Pathname, numeric offset, (optional) file handle
+Returns errno or 0 on success
+
+Like truncate(), but on an opened file.
+
+=head3 fgetattr
+
+Arguments: Pathname, (optional) file handle
+Returns a list, very similar to the 'stat' function (see
+perlfunc).  On error, simply return a single numeric scalar
+value (e.g. "return -ENOENT();").
+
+Like getattr(), but on an opened file.
+
+=head3 lock
+
+Arguments: Pathname, numeric command code, hashref containing lock parameters, (optional) file handle
+Returns errno or 0 on success
+
+Used to lock or unlock regions of a file. Locking is handled locally, but this
+allows (especially for networked file systems) for protocol-level locking
+semantics to also be employed, if any are available.
+
+See the Fuse documentation for more explanation of lock(). The needed symbols
+for the lock constants can be obtained by importing Fcntl.
+
+=head3 utimens
+
+Arguments: Pathname, last accessed time, last modified time
+Returns errno or 0 on success
+
+Like utime(), but allows time resolution down to the nanosecond. Currently
+times are passed as "numeric" (internally I believe these are represented
+typically as "long double"), so the sub-second portion is represented as
+fractions of a second.
+
+Note that if this call is implemented, it overrides utime() ALWAYS.
+
+=head3 bmap
+
+Arguments: Pathname, numeric blocksize, numeric block number
+Returns errno or 0 on success, and physical block number if successful
+
+Used to map a block number offset in a file to the physical block offset
+on the block device backing the file system. This is intended for
+filesystems that are stored on an actual block device, with the 'blkdev'
+option passed.
 
 =head1 AUTHOR
 
