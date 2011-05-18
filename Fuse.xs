@@ -225,6 +225,7 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil, off_t 
 
 int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	int prv, rv;
+	SV **swp;
 	FUSE_CONTEXT_PRE;
 	DEBUGf("getdir begin\n");
 	ENTER;
@@ -235,9 +236,14 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	prv = call_sv(MY_CXT.callback[2],G_ARRAY);
 	SPAGAIN;
 	if(prv) {
+		/* Should yield the bottom of the current stack... */
+		swp = &TOPs - prv + 1;
 		rv = POPi;
-		while(--prv)
-			dirfil(dirh,POPp,0,0);
+		/* Sort of a hack to walk the stack in order, instead of reverse
+		 * order - trying to explain to potential users why they need to
+		 * reverse the order of this array would be confusing, at best. */
+		while (swp <= &TOPs)
+			dirfil(dirh,SvPVx_nolen(*(swp++)),0,0);
 	} else {
 		fprintf(stderr,"getdir() handler returned nothing!\n");
 		rv = -ENOSYS;
