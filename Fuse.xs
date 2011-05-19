@@ -1658,7 +1658,7 @@ perl_fuse_main(...)
 		croak("out of memory\n");
 	}
 	if (mountopts &&
-	     fuse_opt_add_arg(&args, "-o") == -1 ||
+	     (fuse_opt_add_arg(&args, "-o") == -1 ||
 	     fuse_opt_add_arg(&args, mountopts) == -1)) {
 		fuse_opt_free_args(&args);
 		croak("out of memory\n");
