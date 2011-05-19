@@ -10,7 +10,6 @@ use Config;
 require Exporter;
 require DynaLoader;
 use AutoLoader;
-use Data::Dumper;
 our @ISA = qw(Exporter DynaLoader);
 
 # Items to export into callers namespace by default. Note: do not export
@@ -326,11 +325,6 @@ Returns a list: 0 or more text strings (the filenames), followed by a numeric er
 This is used to obtain directory listings.  It's opendir(), readdir(), filldir() and closedir() all in one call.
 
 example rv: return ('.', 'a', 'b', 0);
-
-=head3 readdir
-
-Arguments: Directory name, offset
-Returns: filename, offset to the next dirent, numeric errno 0 or -ENOENT()
 
 =head3 mknod
 
