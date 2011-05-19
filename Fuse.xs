@@ -1643,7 +1643,7 @@ perl_fuse_main(...)
 		} else if(SvOK(var)) {
 			croak("invalid callback (%i) passed to perl_fuse_main "
 			      "(%s is not a string, code ref, or undef).\n",
-			      i+4,SvPVbyte_nolen(var));
+			      i+5,SvPVbyte_nolen(var));
 		} else {
 			MY_CXT.callback[i] = NULL;
 		}
