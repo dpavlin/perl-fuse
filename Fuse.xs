@@ -1653,8 +1653,11 @@ perl_fuse_main(...)
 	 * to hack on compatibility with other parts of the new API. First and
 	 * foremost, real C argc/argv would be good to get at...
 	 */
+	if ((mountopts || debug) && fuse_opt_add_arg(&args, "") == -1) {
+		fuse_opt_free_args(&args);
+		croak("out of memory\n");
+	}
 	if (mountopts &&
-	    (fuse_opt_add_arg(&args, "") == -1 ||
 	     fuse_opt_add_arg(&args, "-o") == -1 ||
 	     fuse_opt_add_arg(&args, mountopts) == -1)) {
 		fuse_opt_free_args(&args);
