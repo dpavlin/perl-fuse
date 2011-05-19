@@ -485,8 +485,8 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	fi->fh = 0; /* Ensure it starts with 0 - important if they don't set it */
 	fihash = newHV();
 #if FUSE_VERSION >= 24
-	(void) hv_store(fihash, "direct_io", 9, newSViv(fi->direct_io), 0);
-	(void) hv_store(fihash, "keep_cache", 10, newSViv(fi->keep_cache), 0);
+	(void) hv_store(fihash, "direct_io",    9, newSViv(fi->direct_io),   0);
+	(void) hv_store(fihash, "keep_cache",  10, newSViv(fi->keep_cache),  0);
 #endif
 #if FUSE_VERSION >= 29
 	(void) hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
@@ -511,13 +511,13 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 		/* Success, so copy the file handle which they returned */
 #if FUSE_VERSION >= 24
 		SV **svp;
-		if ((svp = hv_fetch(fihash, "direct_io",    9, 0)))
+		if ((svp = hv_fetch(fihash, "direct_io",    9, 0)) != NULL)
 			fi->direct_io   = SvIV(*svp);
-		if ((svp = hv_fetch(fihash, "keep_cache",  10, 0)))
+		if ((svp = hv_fetch(fihash, "keep_cache",  10, 0)) != NULL)
 			fi->keep_cache  = SvIV(*svp);
 #endif
 #if FUSE_VERSION >= 29
-		if ((svp = hv_fetch(fihash, "nonseekable", 11, 0)))
+		if ((svp = hv_fetch(fihash, "nonseekable", 11, 0)) != NULL)
  			fi->nonseekable = SvIV(*svp);
 #endif
 	}
@@ -892,7 +892,7 @@ int _PLfuse_opendir(const char *file, struct fuse_file_info *fi) {
 	SPAGAIN;
 	if (rv) {
 		if (rv > 1) {
-                        FH_STOREHANDLE(fi, POPs);
+			FH_STOREHANDLE(fi, POPs);
 		}
 		rv = POPi;
 	} else
@@ -1137,8 +1137,8 @@ int _PLfuse_create(const char *file, mode_t mode, struct fuse_file_info *fi) {
 	 */
 	fihash = newHV();
 #if FUSE_VERSION >= 24
-	(void) hv_store(fihash, "direct_io", 9, newSViv(fi->direct_io), 0);
-	(void) hv_store(fihash, "keep_cache", 10, newSViv(fi->keep_cache), 0);
+	(void) hv_store(fihash, "direct_io",    9, newSViv(fi->direct_io),   0);
+	(void) hv_store(fihash, "keep_cache",  10, newSViv(fi->keep_cache),  0);
 #endif
 #if FUSE_VERSION >= 29
 	(void) hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
@@ -1163,16 +1163,13 @@ int _PLfuse_create(const char *file, mode_t mode, struct fuse_file_info *fi) {
 		/* Success, so copy the file handle which they returned */
 #if FUSE_VERSION >= 24
 		SV **svp;
-		svp = hv_fetch(fihash, "direct_io", 9, 0);
-		if (svp != NULL)
-			fi->direct_io = SvIV(*svp);
-		svp = hv_fetch(fihash, "keep_cache", 10, 0);
-		if (svp != NULL)
-			fi->keep_cache = SvIV(*svp);
+		if ((svp = hv_fetch(fihash, "direct_io",    9, 0)) != NULL)
+			fi->direct_io   = SvIV(*svp);
+		if ((svp = hv_fetch(fihash, "keep_cache",  10, 0)) != NULL)
+			fi->keep_cache  = SvIV(*svp);
 #endif
 #if FUSE_VERSION >= 29
-		svp = hv_fetch(fihash, "nonseekable", 11, 0);
-		if (svp != NULL)
+		if ((svp = hv_fetch(fihash, "nonseekable", 11, 0)) != NULL)
 			fi->nonseekable = SvIV(*svp);
 #endif
 	}
@@ -1313,15 +1310,15 @@ int _PLfuse_lock(const char *file, struct fuse_file_info *fi, int cmd,
 		/* Need to copy back any altered values from the hash into
 		 * the struct... */
 		SV **svp;
-		if ((svp = hv_fetch(lihash, "l_type",   6, 0)))
+		if ((svp = hv_fetch(lihash, "l_type",   6, 0)) != NULL)
 			lockinfo->l_type   = SvIV(*svp);
-		if ((svp = hv_fetch(lihash, "l_whence", 8, 0)))
+		if ((svp = hv_fetch(lihash, "l_whence", 8, 0)) != NULL)
 			lockinfo->l_whence = SvIV(*svp);
-		if ((svp = hv_fetch(lihash, "l_start",  7, 0)))
+		if ((svp = hv_fetch(lihash, "l_start",  7, 0)) != NULL)
 			lockinfo->l_start  = SvNV(*svp);
-		if ((svp = hv_fetch(lihash, "l_len",    5, 0)))
+		if ((svp = hv_fetch(lihash, "l_len",    5, 0)) != NULL)
 			lockinfo->l_len    = SvNV(*svp);
-		if ((svp = hv_fetch(lihash, "l_pid",    5, 0)))
+		if ((svp = hv_fetch(lihash, "l_pid",    5, 0)) != NULL)
 			lockinfo->l_pid    = SvIV(*svp);
 	}
 	FREETMPS;
@@ -1568,7 +1565,6 @@ fuse_get_context()
 #if FUSE_VERSION >= 28
 		(void) hv_store(hash, "umask", 5, newSViv(fc->umask), 0);
 #endif /* FUSE_VERSION >= 28 */
-
 		RETVAL = newRV_noinc((SV*)hash);
 	} else {
 		XSRETURN_UNDEF;
