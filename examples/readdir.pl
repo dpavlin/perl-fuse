@@ -56,10 +56,14 @@ sub e_getattr {
 }
 
 sub e_readdir {
-    my ($path,$offset)  = @_;
+	my ($path,$offset)  = @_;
 	print "readdir $path $offset\n";
+	my $stridelen = 9;
+	my $last = $offset + $stridelen;
 	my @a = keys %files;
-	return $a[$offset], 1 + $offset, $offset < $#a ? 0 : -ENOENT();
+	if ($last > $#a) { $last = $#a; }
+	my @ents = map { [ $_, $a[$_] ] } $offset .. $last;
+	return @ents, $offset < $#a ? 0 : -ENOENT();
 }
 
 sub e_open {
