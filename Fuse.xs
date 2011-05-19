@@ -1136,10 +1136,8 @@ int _PLfuse_create(const char *file, mode_t mode, struct fuse_file_info *fi) {
 	 * which we can look at or modify.
 	 */
 	fihash = newHV();
-#if FUSE_VERSION >= 24
 	(void) hv_store(fihash, "direct_io",    9, newSViv(fi->direct_io),   0);
 	(void) hv_store(fihash, "keep_cache",  10, newSViv(fi->keep_cache),  0);
-#endif
 #if FUSE_VERSION >= 29
 	(void) hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
 #endif
@@ -1161,13 +1159,11 @@ int _PLfuse_create(const char *file, mode_t mode, struct fuse_file_info *fi) {
 	}
 	if (rv == 0) {
 		/* Success, so copy the file handle which they returned */
-#if FUSE_VERSION >= 24
 		SV **svp;
 		if ((svp = hv_fetch(fihash, "direct_io",    9, 0)) != NULL)
 			fi->direct_io   = SvIV(*svp);
 		if ((svp = hv_fetch(fihash, "keep_cache",  10, 0)) != NULL)
 			fi->keep_cache  = SvIV(*svp);
-#endif
 #if FUSE_VERSION >= 29
 		if ((svp = hv_fetch(fihash, "nonseekable", 11, 0)) != NULL)
 			fi->nonseekable = SvIV(*svp);
