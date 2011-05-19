@@ -3,6 +3,7 @@
 #include "perl.h"
 #include "XSUB.h"
 
+#include <sys/xattr.h>
 #include <fuse.h>
 
 /* Determine if threads support should be included */
@@ -1572,6 +1573,20 @@ SV *
 fuse_version()
 	CODE:
 	RETVAL = newSVpvf("%d.%d", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
+	OUTPUT:
+	RETVAL
+
+SV *
+XATTR_CREATE()
+	CODE:
+	RETVAL = newSViv(XATTR_CREATE);
+	OUTPUT:
+	RETVAL
+
+SV *
+XATTR_REPLACE()
+	CODE:
+	RETVAL = newSViv(XATTR_REPLACE);
 	OUTPUT:
 	RETVAL
 

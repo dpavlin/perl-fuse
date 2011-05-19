@@ -62,16 +62,6 @@ sub AUTOLOAD {
     goto &$AUTOLOAD;
 }
 
-sub XATTR_CREATE {
-    # See <sys/xattr.h>.
-    return 1;
-}
-
-sub XATTR_REPLACE {
-    # See <sys/xattr.h>.
-    return 2;
-}
-
 bootstrap Fuse $VERSION;
 
 sub main {
