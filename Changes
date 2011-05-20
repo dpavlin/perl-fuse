@@ -66,3 +66,11 @@ Revision history for Perl extension Fuse.
 0.11
 	- make static callbacks thread-safe, contributed by Daniel Frett
 	- readdir implmenentation contributed by Alex Sudakov RT #55953
+
+0.12
+	- all changes in this version are contributed by Darrik Pates
+	- BACKWARD COMPATILIBY CHANGE: readdir introduced in 0.11 changed!
+	- mount option -o big_writes, and added:
+	  opendir, releasedir, fsyncdir, init, destroy, access, create,
+	  ftruncate, fgetattr, lock, utimens, bmap
+
