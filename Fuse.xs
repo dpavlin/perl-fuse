@@ -3,8 +3,14 @@
 #include "perl.h"
 #include "XSUB.h"
 
-#include <sys/xattr.h>
 #include <fuse.h>
+
+#if defined(__FreeBSD__) || defined(__NetBSD__)
+# define XATTR_CREATE 1
+# define XATTR_REPLACE 2
+#else
+# include <sys/xattr.h>
+#endif
 
 /* Determine if threads support should be included */
 #ifdef USE_ITHREADS
