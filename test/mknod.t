@@ -8,7 +8,7 @@ my (@stat);
 
 chdir($_point);
 ok(!(system("touch reg"      )>>8),"create normal file");
-ok(!(system("mknod fifo p"   )>>8),"create fifo");
+ok(!(system("mkfifo fifo"    )>>8),"create fifo");
 
 chdir($_real);
 ok(-e "reg" ,"normal file exists");
