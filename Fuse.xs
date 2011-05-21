@@ -1582,6 +1582,7 @@ fuse_version()
 	OUTPUT:
 	RETVAL
 
+#ifndef __FreeBSD__
 SV *
 XATTR_CREATE()
 	CODE:
@@ -1595,6 +1596,8 @@ XATTR_REPLACE()
 	RETVAL = newSViv(XATTR_REPLACE);
 	OUTPUT:
 	RETVAL
+
+#endif
 
 void
 perl_fuse_main(...)
