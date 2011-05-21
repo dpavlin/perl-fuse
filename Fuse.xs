@@ -3,18 +3,14 @@
 #include "perl.h"
 #include "XSUB.h"
 
-/*
- * XXX: Fuse on FreeBSD does not support extended attributes (see
- * /usr/local/share/doc/fusefs/kmod/doc.text). Also, 'extattr_set_file' syscall
- * declared in 'sys/extattr.h' does not accept any flags. We could either skip
- * defining XATTR_CREATE and XATTR_REPLACE constants (as further below, and
- * which breaks their usage if Perl module exports them), set them to some
- * dummy values, or not allow them to be exported at all on FreeBSD.
- */
-#ifndef __FreeBSD__
+#include <fuse.h>
+
+#if defined(__FreeBSD__) || defined(__NetBSD__)
+# define XATTR_CREATE 1
+# define XATTR_REPLACE 2
+#else
 # include <sys/xattr.h>
 #endif
-#include <fuse.h>
 
 /* Determine if threads support should be included */
 #ifdef USE_ITHREADS

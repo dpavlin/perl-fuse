@@ -7,7 +7,7 @@ use blib;
 use Fuse;
 use IO::File;
 use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT);
-use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET);
+use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET S_ISREG);
 my $can_syscall = eval {
 	require 'syscall.ph'; # for SYS_mknod and SYS_lchown
 };
@@ -122,6 +122,12 @@ sub x_mknod {
 	my ($file, $modes, $dev) = @_;
 	$file = fixup($file);
 	$! = 0;
+	if ($^O eq 'freebsd' && S_ISREG($modes)) {
+		open(FILE, '>', $file) || return -$!;
+		print FILE "";
+		close(FILE);
+		return 0;
+	}
 	syscall(&SYS_mknod,$file,$modes,$dev);
 	return -$!;
 }
