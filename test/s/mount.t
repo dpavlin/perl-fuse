@@ -4,7 +4,7 @@ use strict;
 use Test::More tests => 3;
 
 sub is_mounted {
-	my $diag = -d '/proc' ? `cat /proc/mounts` : `mount`;
+	my $diag = -e '/proc/mounts' ? `cat /proc/mounts` : `mount`;
 	return $diag =~ m{ (?:/private)?$_point };
 }
 
