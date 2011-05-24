@@ -121,7 +121,7 @@ sub x_mknod {
 	# and possibly run the real mknod command.
 	my ($file, $modes, $dev) = @_;
 	$file = fixup($file);
-	$! = 0;
+	undef $!;
 	if ($^O eq 'freebsd') {
 		if (S_ISREG($modes)) {
 			open(FILE, '>', $file) || return -$!;
