@@ -11,7 +11,7 @@ eval {
 # around and other such nastiness.
 my $packmask;
 if ($^O eq 'linux') {
-    $packmask = 'x[L!]L![6]x[L!]L!';
+    $packmask = 'x[L!]L![6]x[L]x[L]L';
 }
 elsif ($^O eq 'freebsd') {
     $packmask = 'x[16]Qx[8]Q[2]qQqx[112]Lx[4]';
