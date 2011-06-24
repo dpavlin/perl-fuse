@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use test::helper qw($_real $_point);
 use Test::More;
+use Config;
 eval {
    require 'sys/syscall.ph'; # for SYS_statfs
 } or plan skip_all => 'No syscall.ph';
@@ -13,19 +14,37 @@ if ($^O eq 'linux') {
     $packmask = 'x[L!]L![6]x[L!]L!';
 }
 elsif ($^O eq 'freebsd') {
-	# Only sure about this on 64-bit FreeBSD...
-	$packmask = 'x[16]Qx[8]Q[2]qQqx[112]Lx[4]';
+    $packmask = 'x[16]Qx[8]Q[2]qQqx[112]Lx[4]';
 }
 elsif ($^O eq 'netbsd') {
-	# Only sure about this on 64-bit NetBSD...
-	$packmask = 'x[8]Lx![q]x[16]Q[3]x[8]Q[2]x[64]L';
+    if ($Config{'use64bitint'}) {
+        # This should work for any 64-bit NetBSD...
+        $packmask = 'x[8]Lx![q]x[16]Q[3]x[8]Q[2]x[64]L';
+    }
+    else {
+        # NetBSD's perl on 32-bit doesn't handle quadword types, and
+        # this is my workaround. Ugly, but it does the job. And yes,
+        # won't work for big values. Good thing we're not testing
+        # with any, huh?
+        if ($Config{'byteorder'} eq '1234') { # little endian
+            $packmask = 'x[4]Lx[8]Lx[4]Lx[4]Lx[4]x[8]Lx[4]Lx[4]x[64]L';
+        }
+        elsif ($Config{'byteorder'} eq '4321') { # big endian
+            $packmask = 'x[4]Lx[8]x[4]Lx[4]Lx[4]Lx[8]x[4]Lx[4]Lx[64]L';
+        }
+        else {
+            plan skip_all => "Word ordering not known, don't know how to handle statvfs1()";
+            exit(1);
+        }
+    }
 }
 elsif ($^O eq 'darwin') {
     # Accurate for OS X 10.6; 10.5 and earlier may not actually correspond
-	# to this, if my understanding of statfs(2) on OS X is fair.
+    # to this, if my understanding of statfs(2) on OS X is fair.
     $packmask = 'x[L!]L!x[L!]L![5]';
 } else {
-	plan skip_all => 'Platform not known, need to know how to statfs';
+    plan skip_all => 'Platform not known, need to know how to statfs';
+    exit(1);
 }
 
 if ($^O eq 'netbsd' || $^O eq 'darwin') {
