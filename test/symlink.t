@@ -15,5 +15,7 @@ unlink("def");
 # reports an error
 mkdir("dira");
 system("cd dira; touch filea; ln -s filea fileb");
-is(system("cp -a dira dirb")>>8,0,"cp -a");
+my $cp = 'cp -a';
+if ($^O eq 'netbsd') { $cp = 'cp -R'; }
+is(system($cp . " dira dirb")>>8,0,$cp);
 system("rm -rf dira dirb");

@@ -4,6 +4,9 @@ use Test::More;
 plan tests => 24;
 use English;
 
+my $maj_off = 8;
+if ($^O eq 'darwin') { $maj_off = 24; }
+
 my (@stat);
 
 chdir($_point);
@@ -34,9 +37,9 @@ SKIP: {
 	ok(-b "blk" ,"blkdev is blkdev");
 
 	@stat = stat("chr");
-	is($stat[6],3+(2<<8),"chrdev has right major,minor");
+	is($stat[6],3+(2<<$maj_off),"chrdev has right major,minor");
 	@stat = stat("blk");
-	is($stat[6],3+(2<<8),"blkdev has right major,minor");
+	is($stat[6],3+(2<<$maj_off),"blkdev has right major,minor");
 }
 
 chdir($_point);
@@ -54,9 +57,9 @@ SKIP: {
 	ok(-b "blk" ,"blkdev is blkdev");
 
 	@stat = stat("chr");
-	is($stat[6],3+(2<<8),"chrdev has right major,minor");
+	is($stat[6],3+(2<<$maj_off),"chrdev has right major,minor");
 	@stat = stat("blk");
-	is($stat[6],3+(2<<8),"blkdev has right major,minor");
+	is($stat[6],3+(2<<$maj_off),"blkdev has right major,minor");
 }
 
 map { unlink } qw(reg chr blk fifo);

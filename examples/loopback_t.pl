@@ -122,7 +122,7 @@ sub x_mknod {
 	my ($file, $modes, $dev) = @_;
 	$file = fixup($file);
 	undef $!;
-	if ($^O eq 'freebsd') {
+	if ($^O eq 'freebsd' || $^O eq 'darwin' || $^O eq 'netbsd') {
 		if (S_ISREG($modes)) {
 			open(FILE, '>', $file) || return -$!;
 			print FILE "";

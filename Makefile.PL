@@ -1,7 +1,31 @@
 use ExtUtils::MakeMaker;
+use POSIX;
 use Config;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
+
+# Note: This is a hack. This hack is necessary because MacFUSE's libfuse
+# (and libfuse_ino64, by extension) don't link in libiconv. This wouldn't
+# be a problem, but it appears the Darwin/OS X dynamic linker won't
+# satisfy runtime link dependencies in those libraries from libraries
+# imported by our library, and it uses a symbol from libiconv without
+# actually linking the library to itself. Awesome.
+package MY;
+sub test_via_harness {
+  my($self, $perl, $tests) = @_;
+  local $_ = $self->SUPER::test_via_harness($perl, $tests);
+  s/PERL_DL_NONLAZY=1//g if $^O eq 'darwin';
+  return $_;
+}
+
+sub test_via_script {
+  my($self, $perl, $tests) = @_;
+  local $_ = $self->SUPER::test_via_script($perl, $tests);
+  s/PERL_DL_NONLAZY=1//g if $^O eq 'darwin';
+  return $_;
+}
+
+package main;
 
 my $ver = `fusermount -V`;
 my $ver2 = `mount_fusefs -V`;
@@ -30,6 +54,9 @@ if ($ver && $ver + 0 < 2.5) {
 
 my $inc = '-DFUSE_USE_VERSION=26 ' . `pkg-config --cflags fuse` || '-I ../include -D_FILE_OFFSET_BITS=64';
 my $obj = `pkg-config --libs fuse` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse');
+if ($^O eq 'darwin' && (uname())[2] =~ /^10\./) {
+	$obj =~ s/-lfuse/-lfuse_ino64/;
+}
 my $def = '-Wall -g -ggdb';
 $def .= ' -D__FreeBSD__=10 -D_FILE_OFFSET_BITS=64' if $^O eq 'darwin';
 $def .= ' -DPERL_HAS_64BITINT' if $Config{'use64bitint'};

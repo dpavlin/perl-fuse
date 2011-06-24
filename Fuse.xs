@@ -733,7 +733,11 @@ int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	return rv;
 }
 
+#if __FreeBSD__ >= 10
+int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_t buflen, int flags, uint32_t position) {
+#else
 int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_t buflen, int flags) {
+#endif
 	int rv;
 	FUSE_CONTEXT_PRE;
 	DEBUGf("setxattr begin\n");
@@ -756,7 +760,11 @@ int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_
 	return rv;
 }
 
+#if __FreeBSD__ >= 10
+int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t buflen, uint32_t position) {
+#else
 int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t buflen) {
+#endif
 	int rv;
 	FUSE_CONTEXT_PRE;
 	DEBUGf("getxattr begin\n");
