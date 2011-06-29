@@ -39,9 +39,13 @@
 typedef struct {
 	SV *callback[N_CALLBACKS];
 	HV *handles;
+#ifdef USE_ITHREADS
 	tTHX self;
+#endif
 	int threaded;
+#ifdef USE_ITHREADS
 	perl_mutex mutex;
+#endif
 } my_cxt_t;
 START_MY_CXT;
 
@@ -1520,14 +1524,19 @@ PROTOTYPES: DISABLE
 
 BOOT:
 	MY_CXT_INIT;
+#ifdef USE_ITHREADS
 	MY_CXT.self = aTHX;
+#endif
 
 void
 CLONE(...)
 	PREINIT:
+#ifdef USE_ITHREADS
 		int i;
 		dTHX;
+#endif
 	CODE:
+#ifdef USE_ITHREADS
 		MY_CXT_CLONE;
 		tTHX parent = MY_CXT.self;
 		MY_CXT.self = my_perl;
@@ -1559,6 +1568,7 @@ CLONE(...)
 			clone_params_del(clone_param);
 #endif
 		}
+#endif
 
 SV*
 fuse_get_context()

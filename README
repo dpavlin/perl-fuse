@@ -93,18 +93,7 @@ Currently tests have been attempted and succeeded on:
   * FreeBSD 8.2/amd64
   * MacOS X 10.6.7
 
-Note that currently, this module requires a threaded Perl. This is not a
-problem on most operating systems, but FreeBSD does not build Perl in
-ports with threading enabled. You'll need to build it yourself. You can use
-Perl 5.8, 5.10, or 5.12, but you'll need to:
-
-  cd /usr/ports/lang/perl$VERSION
-  make config
-  [enable THREADS and choose OK]
-  make
-  make install
-
-Also note that on NetBSD, there are several bugs in libpuffs and librefuse
+Note that on NetBSD, there are several bugs in libpuffs and librefuse
 which prevent some tests from succeeding. There are fixes in NetBSD's
 MAIN branch, specifically revisions 1.26 and 1.27 on src/lib/libpuffs/subr.c,
 which correct the issues that cause the test failures. However, there is
