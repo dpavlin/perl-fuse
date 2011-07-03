@@ -12,8 +12,6 @@ database as file system, but there will be more.
 This is a pre-production release.  It seems to work quite well.  In fact, I
 can't find any problems with it whatsoever.  If you do, I want to know.
 
-Support for FreeBSD is experimental, so expect tests to fail.
-
 INSTALLATION
 
 To install this module type the standard commands as root:
@@ -100,3 +98,6 @@ which correct the issues that cause the test failures. However, there is
 still a bug in librefuse that causes readdir() to only be called once.
 We will be addressing this with the appropriate developers in the near
 future.
+
+Also note that on NetBSD and FreeBSD, extended attributes do not work. These
+are specifics related to the FUSE implementations on those platforms.

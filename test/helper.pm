@@ -6,11 +6,11 @@ use Config;
 use POSIX qw(WEXITSTATUS);
 our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
 @ISA = "Exporter";
-@EXPORT_OK = qw($_loop $_point $_pidfile $_real);
+@EXPORT_OK = qw($_loop $_opts $_point $_pidfile $_real);
 my $tmp = -d '/private' ? '/private/tmp' : '/tmp';
-our($_loop, $_point, $_pidfile, $_real) = ("","$tmp/fusemnt-".$ENV{LOGNAME},"test/s/mounted.pid","$tmp/fusetest-".$ENV{LOGNAME});
-#$_loop = $^O ne 'darwin' && $Config{useithreads} ? "examples/loopback_t.pl" : "examples/loopback.pl";
-$_loop = $Config{useithreads} ? "examples/loopback_t.pl" : "examples/loopback.pl";
+our($_loop, $_point, $_pidfile, $_real, $_opts) = ('examples/loopback.pl',"$tmp/fusemnt-".$ENV{LOGNAME},"test/s/mounted.pid","$tmp/fusetest-".$ENV{LOGNAME}, '');
+$_opts = '--pidfile ' . $_pidfile;
+$_opts .= $Config{useithreads} ? ' --use-threads' : '';
 if($0 !~ qr|s/u?mount\.t$|) {
 	my ($reject) = 1;
 	if(open my $fh, '<', $_pidfile) {
