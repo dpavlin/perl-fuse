@@ -74,3 +74,6 @@ Revision history for Perl extension Fuse.
 	  opendir, releasedir, fsyncdir, init, destroy, access, create,
 	  ftruncate, fgetattr, lock, utimens, bmap
 
+0.13
+	- improved support for FreeBSD, NetBSD and OS X
+	- restored non-threaded perl support
