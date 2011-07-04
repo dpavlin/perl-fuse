@@ -12,80 +12,76 @@ use Config;
 # actually linking the library to itself. Awesome.
 package MY;
 sub test_via_harness {
-  my($self, $perl, $tests) = @_;
-  local $_ = $self->SUPER::test_via_harness($perl, $tests);
-  s/PERL_DL_NONLAZY=1//g if $^O eq 'darwin';
-  return $_;
+    my($self, $perl, $tests) = @_;
+    local $_ = $self->SUPER::test_via_harness($perl, $tests);
+    s/PERL_DL_NONLAZY=1//g if $^O eq 'darwin';
+    return $_;
 }
 
 sub test_via_script {
-  my($self, $perl, $tests) = @_;
-  local $_ = $self->SUPER::test_via_script($perl, $tests);
-  s/PERL_DL_NONLAZY=1//g if $^O eq 'darwin';
-  return $_;
+    my($self, $perl, $tests) = @_;
+    local $_ = $self->SUPER::test_via_script($perl, $tests);
+    s/PERL_DL_NONLAZY=1//g if $^O eq 'darwin';
+    return $_;
 }
 
 package main;
 
-my $ver = `fusermount -V`;
-my $ver2 = `mount_fusefs -V`;
-chomp(my $ver3 = `mount_fusefs -V 2>&1 | head -n1`);
-$ver =~ s/^.*?version:\s+//;
-$ver2 =~ s/^.*?version:\s+//;
-$ver3 =~ s/^.*?version\s+//;
-if (! $ver && ! $ver2 && ! $ver3) {
-	# make CPANPLUS happy and don't report errors if fuse isn't installed
-	die("No support for os: $^O\n",
-		"You need to have fuse-dev (or similar) package installed and have sufficient permissions in order to install this module\n",
-		$^O eq 'darwin' ? ("One option on Mac is http://code.google.com/p/macfuse/\n") : (),
-	);
-}
-if ($ver && $ver + 0 < 2.5) {
-	die "Fuse perl bindings need Linux fuse version 2.5 or newer\n";
-} elsif ($ver2 && $ver2 + 0 < 0.3) {
-	die "Fuse perl bindings need FreeBSD fuse version 0.3 or newer\n";
-} elsif ($^O eq 'darwin' && $ver3 && !(($ver3 ge "0.1.0b006") || ($ver3 eq "0.1.0"))) {
-	# the "ge" string-compare check will match all later revs and all later
-	# betas, but not the final release of the current rev (0.1.0).
-	die "Fuse perl bindings need MacFUSE version 0.1.0b006 or newer, your version is \"$ver3\"\n";
-} else {
-	warn "fuse version found: ", $ver || $ver2 || $ver3, "\n";
+chomp(my $fusever = `pkg-config --modversion fuse 2> /dev/null`);
+# Required for refuse on NetBSD
+unless ($fusever) {
+    chomp($fusever = `fusermount -V`);
+    $fusever =~ s/^.*?version:\s+//;
 }
 
-my $inc = '-DFUSE_USE_VERSION=26 ' . `pkg-config --cflags fuse` || '-I ../include -D_FILE_OFFSET_BITS=64';
-my $obj = `pkg-config --libs fuse` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse');
-if ($^O eq 'darwin' && (uname())[2] =~ /^10\./) {
-	$obj =~ s/-lfuse/-lfuse_ino64/;
+unless ($fusever) {
+    # make CPANPLUS happy and don't report errors if fuse isn't installed
+    die("No support for os: $^O\n",
+        "You need to have fuse-dev (or similar) package installed and have sufficient permissions in order to install this module\n",
+        $^O eq 'darwin' ? ("One option on Mac is http://code.google.com/p/macfuse/\n") : (),
+    );
 }
-my $def = '-Wall -g -ggdb';
-$def .= ' -D__FreeBSD__=10 -D_FILE_OFFSET_BITS=64' if $^O eq 'darwin';
+if ($fusever && $fusever + 0 < 2.6) {
+    die "FUSE API is ", $fusever, ", must be 2.6 or later\n";
+} else {
+    warn "fuse version found: ", $fusever, "\n";
+}
+
+chomp(my $inc = `pkg-config --cflags-only-I fuse 2> /dev/null` || '-I ../include');
+chomp(my $libs = `pkg-config --libs-only-L fuse 2> /dev/null`);
+chomp($libs .= `pkg-config --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse'));
+if ($^O eq 'darwin' && (uname())[2] =~ /^10\./) {
+    $libs =~ s/-lfuse/-lfuse_ino64/;
+}
+chomp(my $def = '-Wall -g -ggdb -DFUSE_USE_VERSION=26 ' . `pkg-config --cflags-only-other fuse 2> /dev/null` || '-D_FILE_OFFSET_BITS=64');
+chomp($def .= `pkg-config --libs-only-other fuse 2> /dev/null`);
 $def .= ' -DPERL_HAS_64BITINT' if $Config{'use64bitint'};
 
 WriteMakefile(
-	'NAME'			=> 'Fuse',
-	'VERSION_FROM'	=> 'Fuse.pm', # finds $VERSION
-	'PREREQ_PM'		=> {}, # e.g., Module::Name => 1.1
-	($] >= 5.005 ?	## Add these new keywords supported since 5.005
-		(ABSTRACT_FROM	=> 'Fuse.pm', # retrieve abstract from module
-		AUTHOR			=> 'Mark Glines <mark@glines.org>') : ()),
-		($ExtUtils::MakeMaker::VERSION < 6.46 ? () : (
-			META_MERGE => {
-				resources => {
-				bugtracker => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Fuse',
-				repository => 'http://github.com/dpavlin/perl-fuse'
-			}
-   		})
-	),
-	'LIBS'			=> [''], # e.g., '-lm'
-	'DEFINE'		=> $def, # e.g., '-DHAVE_SOMETHING'
+    'NAME'          => 'Fuse',
+    'VERSION_FROM'  => 'Fuse.pm', # finds $VERSION
+    'PREREQ_PM'     => {}, # e.g., Module::Name => 1.1
+    ($] >= 5.005 ?  ## Add these new keywords supported since 5.005
+       (ABSTRACT_FROM   => 'Fuse.pm', # retrieve abstract from module
+        AUTHOR          => 'Mark Glines <mark@glines.org>') : ()),
+    ($ExtUtils::MakeMaker::VERSION < 6.46 ? () : (
+        META_MERGE => {
+            resources => {
+                bugtracker => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Fuse',
+                repository => 'http://github.com/dpavlin/perl-fuse'
+            },
+        })
+    ),
+	'LIBS'          => '-lpthread ' . $libs, # e.g., '-lm'
+	'DEFINE'        => $def, # e.g., '-DHAVE_SOMETHING'
 	# Insert -I. if you add *.h files later:
-	'INC'			=> $inc, # e.g., '-I/usr/include/other'
+	'INC'           => $inc, # e.g., '-I/usr/include/other'
 	# Un-comment this if you add C files to link with later:
-	'OBJECT'		=> "$obj Fuse.o -lpthread", # link all the C files too
+	'OBJECT'        => 'Fuse$(OBJ_EXT)', # link all the C files too
 );
 
 sub MY::postamble {
-	return <<'MAKE_MORE';
+    return <<'MAKE_MORE';
 
 cpan:
 	make clean
@@ -104,3 +100,5 @@ sf:
 
 MAKE_MORE
 };
+
+# vim: ts=4 ai et hls

@@ -33,7 +33,5 @@ test/pod.t
 examples/example.pl
 examples/example_t.pl
 examples/loopback.pl
-examples/loopback_t.pl
 examples/rmount_remote.pl
 examples/rmount.pl
-examples/loopback-statvfs.pl

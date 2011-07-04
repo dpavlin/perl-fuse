@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
-use test::helper qw($_point $_loop $_real $_pidfile);
+use test::helper qw($_point $_loop $_opts $_real $_pidfile);
 use strict;
+use Errno qw(:POSIX);
 use Test::More tests => 3;
 
 sub is_mounted {
@@ -11,19 +12,16 @@ sub is_mounted {
 ok(!is_mounted(),"already mounted");
 ok(-f $_loop,"loopback exists");
 
-if(!fork()) {
-	#close(STDIN);
-	close(STDOUT);
-	close(STDERR);
-	mkdir $_point;
-	mkdir $_real;
-	`echo $$ >test/s/mounted.pid`;
-	diag "mounting $_loop to $_point";
-	open STDOUT, '>', '/tmp/fusemnt.log';
-	open STDERR, '>&', \*STDOUT;
-	exec("perl -Iblib/lib -Iblib/arch $_loop $_point");
-	exit(1);
-}
+mkdir $_point;
+mkdir $_real;
+diag "mounting $_loop to $_point";
+open REALSTDOUT, '>&STDOUT';
+open REALSTDERR, '>&STDERR';
+open STDOUT, '>', '/tmp/fusemnt.log';
+open STDERR, '>&', \*STDOUT;
+system("perl -Iblib/lib -Iblib/arch $_loop $_opts $_point");
+open STDOUT, '>&', \*REALSTDOUT;
+open STDERR, '>&', \*REALSTDERR;
 
 my ($success, $count) = (0,0);
 while ($count++ < 50 && !$success) {
