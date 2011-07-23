@@ -1563,7 +1563,7 @@ CLONE(...)
 		{
 			CLONE_PARAMS *clone_param;
 #if (PERL_VERSION > 13) || (PERL_VERSION == 13 && PERL_SUBVERSION >= 2)
-			clone_param = clone_params_new(parent, aTHX);
+			clone_param = Perl_clone_params_new(parent, aTHX);
 #else
 			CLONE_PARAMS raw_param;
 			raw_param.flags = 0;
@@ -1576,7 +1576,7 @@ CLONE(...)
 			}
 			MY_CXT.handles = (HV*)sv_dup((SV*)MY_CXT.handles, clone_param);
 #if (PERL_VERSION > 13) || (PERL_VERSION == 13 && PERL_SUBVERSION >= 2)
-			clone_params_del(clone_param);
+			Perl_clone_params_del(clone_param);
 #endif
 		}
 #endif
