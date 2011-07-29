@@ -88,3 +88,5 @@ Revision history for Perl extension Fuse.
 	  libfuse. Cleans up some of the mess before of different ways of
 	  handling different OSes; NetBSD is still a bit messy due to
 	  librefuse.
+	- Decrease file sizes in getattr test, to keep test from running
+	  for multiple hours (due to HFS+ not supporting sparse files).
