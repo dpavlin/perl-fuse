@@ -5,7 +5,7 @@ use Errno qw(:POSIX);
 use Test::More tests => 3;
 
 sub is_mounted {
-	my $diag = -e '/proc/mounts' ? `cat /proc/mounts` : `mount`;
+	my $diag = -e '/proc/mounts' ? `cat /proc/mounts` : ($^O eq 'linux' ? `/bin/mount` : `/sbin/mount`);
 	return $diag =~ m{ (?:/private)?$_point };
 }
 
