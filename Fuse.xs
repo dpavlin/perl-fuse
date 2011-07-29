@@ -62,7 +62,7 @@ tTHX master_interp = NULL;
 
 #define CLONE_INTERP(parent) S_clone_interp(parent)
 tTHX S_clone_interp(tTHX parent) {
-#  if (PERL_VERSION < 8) || (PERL_VERSION == 8 && PERL_SUBVERSION < 9)
+#  if (PERL_VERSION < 10)
 	tTHX my_perl = parent;
 #endif
 	dMY_CXT_INTERP(parent);
