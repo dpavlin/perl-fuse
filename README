@@ -78,9 +78,6 @@ unmount infrastructure is a crock.  I am not pleased with that code.
 
 While most things work, I do still have a TODO list:
 * need to sort out cleaner mount semantics for the test framework
-* Do getattr() test in a way that doesn't depend on sparse files, as HFS+
-  doesn't support sparse files, thus causing getattr test to take a very
-  long time.
 
 Currently tests have been attempted and succeeded on:
   * Ubuntu 10.10/amd64

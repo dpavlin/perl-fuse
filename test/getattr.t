@@ -8,7 +8,7 @@ sub test_file {
 	my ($a, $b) = ("$_real/wibble-$size","$_point/wibble-$size");
 #	diag "test $size Gb file";
 	open(my $fh, '>', $a) || die "can't open $b: $!";
-	seek($fh, $size * 1024 * 1024 * 1024, 0);
+	seek($fh, $size * 1024 * 1024, 0);
 	print $fh ' ';
 	close($fh);
 #	diag "size $b = ",-s $b, " $a = ", -s $a;
