@@ -16,7 +16,7 @@
 #ifdef USE_ITHREADS
 # ifdef I_PTHREAD
 #  define FUSE_USE_ITHREADS
-#  if (PERL_VERSION < 10)
+#  if (PERL_VERSION < 8) || (PERL_VERSION == 8 && PERL_SUBVERSION < 9)
 #    define tTHX PerlInterpreter*
 #    define STR_WITH_LEN(s)  ("" s ""), (sizeof(s)-1)
 #    define hv_fetchs(hv,key,lval) Perl_hv_fetch(aTHX_ hv, STR_WITH_LEN(key), lval)
@@ -62,7 +62,7 @@ tTHX master_interp = NULL;
 
 #define CLONE_INTERP(parent) S_clone_interp(parent)
 tTHX S_clone_interp(tTHX parent) {
-#if (PERL_VERSION < 10)
+#  if (PERL_VERSION < 8) || (PERL_VERSION == 8 && PERL_SUBVERSION < 9)
 	tTHX my_perl = parent;
 #endif
 	dMY_CXT_INTERP(parent);
