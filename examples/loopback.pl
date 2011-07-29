@@ -118,6 +118,7 @@ sub x_rename {
 sub x_link { return link(fixup(shift),fixup(shift)) ? 0 : -$! }
 sub x_chown {
     my ($fn) = fixup(shift);
+    local $!;
     print "nonexistent $fn\n" unless -e $fn;
     my ($uid,$gid) = @_;
     lchown($uid, $gid, $fn);
