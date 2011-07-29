@@ -31,7 +31,7 @@ use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT);
 use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET S_ISREG S_ISFIFO S_IMODE S_ISCHR S_ISBLK S_ISSOCK);
 use Getopt::Long;
 use Lchown;
-use Unix::Mknod;
+use Unix::Mknod qw(:all);
 
 my %extraopts = ( 'threaded' => 0, 'debug' => 0 );
 my($use_real_statfs, $pidfile);
