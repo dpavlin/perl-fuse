@@ -77,3 +77,14 @@ Revision history for Perl extension Fuse.
 0.13
 	- improved support for FreeBSD, NetBSD and OS X
 	- restored non-threaded perl support
+
+0.14
+	- Retooling portions of the test facilities, and removing dependence
+	  on syscall() and knowing syscall numbers for basic test
+	  functionality.
+	- Compatibility fixes for Perl 5.8 and Perl 5.13/5.14 with threads.
+	- Cleanups to build system, to use pkg-config to get the Fuse
+	  build arguments for building our code against the installed
+	  libfuse. Cleans up some of the mess before of different ways of
+	  handling different OSes; NetBSD is still a bit messy due to
+	  librefuse.
