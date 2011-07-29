@@ -28,8 +28,10 @@ use blib;
 use Fuse;
 use IO::File;
 use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT);
-use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET S_ISREG S_ISFIFO S_IMODE);
+use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET S_ISREG S_ISFIFO S_IMODE S_ISCHR S_ISBLK S_ISSOCK);
 use Getopt::Long;
+use Lchown;
+use Unix::Mknod;
 
 my %extraopts = ( 'threaded' => 0, 'debug' => 0 );
 my($use_real_statfs, $pidfile);
@@ -45,21 +47,6 @@ GetOptions(
     'use-real-statfs'   => \$use_real_statfs,
     'pidfile=s'         => \$pidfile,
 ) || die('Error parsing options');
-
-my $can_syscall = eval {
-    require 'sys/syscall.ph'; # for SYS_mknod and SYS_lchown
-};
-if (!$can_syscall && open my $fh, '<', '/usr/include/sys/syscall.h') {
-    my %sys = do { local $/ = undef;
-            <$fh> =~ m/\#define \s+ (\w+) \s+ (\d+)/gxms;
-        };
-    close $fh;
-    if ($sys{SYS_mknod} && $sys{SYS_lchown}) {
-        *SYS_mknod  = sub { $sys{SYS_mknod}  };
-        *SYS_lchown = sub { $sys{SYS_lchown} };
-        $can_syscall = 1;
-    }
-}
 
 sub fixup { return "/tmp/fusetest-" . $ENV{LOGNAME} . shift }
 
@@ -130,16 +117,11 @@ sub x_rename {
 }
 sub x_link { return link(fixup(shift),fixup(shift)) ? 0 : -$! }
 sub x_chown {
-    return -ENOSYS() if ! $can_syscall;
     my ($fn) = fixup(shift);
     print "nonexistent $fn\n" unless -e $fn;
     my ($uid,$gid) = @_;
-    # perl's chown() does not chown symlinks, it chowns the symlink's
-    # target.  it fails when the link's target doesn't exist, because
-    # the stat64() syscall fails.
-    # this causes error messages when unpacking symlinks in tarballs.
-    my ($err) = syscall(&SYS_lchown,$fn,$uid,$gid,$fn) ? -$! : 0;
-    return $err;
+    lchown($uid, $gid, $fn);
+    return -$!;
 }
 sub x_chmod {
     my ($fn) = fixup(shift);
@@ -154,24 +136,31 @@ sub x_mkdir { my ($name, $perm) = @_; return 0 if mkdir(fixup($name),$perm); ret
 sub x_rmdir { return 0 if rmdir fixup(shift); return -$!; }
 
 sub x_mknod {
-    return -ENOSYS() if ! $can_syscall;
     # since this is called for ALL files, not just devices, I'll do some checks
     # and possibly run the real mknod command.
     my ($file, $modes, $dev) = @_;
     $file = fixup($file);
     undef $!;
-    if ($^O eq 'freebsd' || $^O eq 'darwin' || $^O eq 'netbsd') {
-        if (S_ISREG($modes)) {
-            open(FILE, '>', $file) || return -$!;
-            print FILE '';
-            close(FILE);
-            return 0;
-        } elsif (S_ISFIFO($modes)) {
-            my ($rv) = POSIX::mkfifo($file, S_IMODE($modes));
-            return $rv ? 0 : -POSIX::errno();
-        }
+    if (S_ISREG($modes)) {
+        open(FILE, '>', $file) || return -$!;
+        print FILE '';
+        close(FILE);
+        chmod S_IMODE($modes), $file;
+        return 0;
     }
-    syscall(&SYS_mknod,$file,$modes,$dev);
+    elsif (S_ISFIFO($modes)) {
+        my ($rv) = POSIX::mkfifo($file, S_IMODE($modes));
+        return $rv ? 0 : -POSIX::errno();
+    }
+    elsif (S_ISCHR($modes) || S_ISBLK($modes)) {
+        mknod($file, $modes, $dev);
+        return -$!;
+    }
+    # S_ISSOCK maybe should be handled; however, for our test it should
+    # not really matter.
+    else {
+        return -&ENOSYS;
+    }
     return -$!;
 }
 

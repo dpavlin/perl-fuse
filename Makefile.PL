@@ -36,10 +36,31 @@ unless ($fusever) {
 
 unless ($fusever) {
     # make CPANPLUS happy and don't report errors if fuse isn't installed
-    die("No support for os: $^O\n",
-        "You need to have fuse-dev (or similar) package installed and have sufficient permissions in order to install this module\n",
-        $^O eq 'darwin' ? ("One option on Mac is http://code.google.com/p/macfuse/\n") : (),
-    );
+    my $explanation;
+    if ($^O eq 'linux') {
+        if (-e '/etc/debian_version') {
+            $explanation = 'You need to install "libfuse-dev" to provide build support for this module';
+        }
+        elsif (-e '/etc/redhat-release') {
+            $explanation = 'You need to install "fuse-devel" to provide build support for this module';
+        }
+        else {
+            $explanation = 'I don\'t know your Linux distribution, but please install the FUSE libraries and headers to build this module';
+        }
+    }
+    elsif ($^O eq 'freebsd') {
+        $explanation = 'You need to install the "fusefs-libs" package from ports to support this module';
+    }
+    elsif ($^O eq 'netbsd') {
+        $explanation = 'Could not find librefuse? Maybe install "perfuse" from pkgsrc, or upgrade to newer NetBSD';
+    }
+    elsif ($^O = 'darwin') {
+        $explanation = 'Please install MacFuse from http://code.google.com/p/macfuse/';
+    }
+    else {
+        $explanation = 'There is no FUSE support for your platform to our knowledge, sorry';
+    }
+    die("Cannot build for platform: $^O\n", $explanation, "\n");
 }
 if ($fusever && $fusever + 0 < 2.6) {
     die "FUSE API is ", $fusever, ", must be 2.6 or later\n";
@@ -50,17 +71,24 @@ if ($fusever && $fusever + 0 < 2.6) {
 chomp(my $inc = `pkg-config --cflags-only-I fuse 2> /dev/null` || '-I ../include');
 chomp(my $libs = `pkg-config --libs-only-L fuse 2> /dev/null`);
 chomp($libs .= `pkg-config --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse'));
+# Needed for Fuse on OS X 10.6, due to 10.6 and up always using the 64-bit
+# inode structs; unfortunately MacFuse doesn't just do the right thing
+# on its own.
 if ($^O eq 'darwin' && (uname())[2] =~ /^10\./) {
     $libs =~ s/-lfuse/-lfuse_ino64/;
 }
-chomp(my $def = '-Wall -g -ggdb -DFUSE_USE_VERSION=26 ' . `pkg-config --cflags-only-other fuse 2> /dev/null` || '-D_FILE_OFFSET_BITS=64');
+chomp(my $def = '-Wall -DFUSE_USE_VERSION=26 ' . `pkg-config --cflags-only-other fuse 2> /dev/null` || '-D_FILE_OFFSET_BITS=64');
 chomp($def .= `pkg-config --libs-only-other fuse 2> /dev/null`);
 $def .= ' -DPERL_HAS_64BITINT' if $Config{'use64bitint'};
 
 WriteMakefile(
     'NAME'          => 'Fuse',
     'VERSION_FROM'  => 'Fuse.pm', # finds $VERSION
-    'PREREQ_PM'     => {}, # e.g., Module::Name => 1.1
+    'PREREQ_PM'     => { # e.g., Module::Name => 1.1
+        'Lchown'            => 0,
+        'Filesys::Statvfs'  => 0,
+        'Unix::Mknod'       => 0,
+    },
     ($] >= 5.005 ?  ## Add these new keywords supported since 5.005
        (ABSTRACT_FROM   => 'Fuse.pm', # retrieve abstract from module
         AUTHOR          => 'Mark Glines <mark@glines.org>') : ()),
@@ -72,12 +100,13 @@ WriteMakefile(
             },
         })
     ),
-	'LIBS'          => '-lpthread ' . $libs, # e.g., '-lm'
-	'DEFINE'        => $def, # e.g., '-DHAVE_SOMETHING'
-	# Insert -I. if you add *.h files later:
-	'INC'           => $inc, # e.g., '-I/usr/include/other'
-	# Un-comment this if you add C files to link with later:
-	'OBJECT'        => 'Fuse$(OBJ_EXT)', # link all the C files too
+    'LIBS'          => '-lpthread ' . $libs, # e.g., '-lm'
+    'DEFINE'        => $def, # e.g., '-DHAVE_SOMETHING'
+    'OPTIMIZE'      => '-g -ggdb',
+    # Insert -I. if you add *.h files later:
+    'INC'           => $inc, # e.g., '-I/usr/include/other'
+    # Un-comment this if you add C files to link with later:
+    'OBJECT'        => 'Fuse$(OBJ_EXT)', # link all the C files too
 );
 
 sub MY::postamble {
