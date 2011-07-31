@@ -3,15 +3,15 @@ use test::helper qw($_real $_point);
 use Test::More;
 plan tests => 24;
 use English;
-
-my $maj_off = 8;
-if ($^O eq 'darwin') { $maj_off = 24; }
+use Unix::Mknod qw(:all);
+use Fcntl qw(:mode);
+use POSIX;
 
 my (@stat);
 
 chdir($_point);
 ok(!(system("touch reg"      )>>8),"create normal file");
-ok(!(system("mkfifo fifo"    )>>8),"create fifo");
+ok(defined mkfifo($_point.'/fifo', 0600),"create fifo");
 
 chdir($_real);
 ok(-e "reg" ,"normal file exists");
@@ -23,8 +23,8 @@ SKIP: {
 	skip('Need root to mknod devices', 8) unless ($UID == 0);
 
 	chdir($_point);
-	ok(!(system("mknod chr c 2 3")>>8),"create chrdev");
-	ok(!(system("mknod blk b 2 3")>>8),"create blkdev");
+	ok(!mknod($_point.'/chr', 0600|S_IFCHR, makedev(2,3)),"create chrdev");
+	ok(!mknod($_point.'/blk', 0600|S_IFBLK, makedev(2,3)),"create blkdev");
 
 	chdir($_real);
 	ok(-e "chr" ,"chrdev exists");
@@ -37,9 +37,9 @@ SKIP: {
 	ok(-b "blk" ,"blkdev is blkdev");
 
 	@stat = stat("chr");
-	is($stat[6],3+(2<<$maj_off),"chrdev has right major,minor");
+	is($stat[6],makedev(2,3),"chrdev has right major,minor");
 	@stat = stat("blk");
-	is($stat[6],3+(2<<$maj_off),"blkdev has right major,minor");
+	is($stat[6],makedev(2,3),"blkdev has right major,minor");
 }
 
 chdir($_point);
@@ -57,9 +57,9 @@ SKIP: {
 	ok(-b "blk" ,"blkdev is blkdev");
 
 	@stat = stat("chr");
-	is($stat[6],3+(2<<$maj_off),"chrdev has right major,minor");
+	is($stat[6],makedev(2,3),"chrdev has right major,minor");
 	@stat = stat("blk");
-	is($stat[6],3+(2<<$maj_off),"blkdev has right major,minor");
+	is($stat[6],makedev(2,3),"blkdev has right major,minor");
 }
 
 map { unlink } qw(reg chr blk fifo);
