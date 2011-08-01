@@ -3,12 +3,16 @@ use test::helper qw($_real $_point);
 use Test::More;
 use Data::Dumper;
 plan tests => 203;
+$scale = 1024 * 1024 * 1024;
+if ($^O eq 'darwin') {
+	$scale = 1024 * 1024;
+}
 sub test_file {
 	my $size = shift;
 	my ($a, $b) = ("$_real/wibble-$size","$_point/wibble-$size");
 #	diag "test $size Gb file";
 	open(my $fh, '>', $a) || die "can't open $b: $!";
-	seek($fh, $size * 1024 * 1024, 0);
+	seek($fh, $size * $scale, 0);
 	print $fh ' ';
 	close($fh);
 #	diag "size $b = ",-s $b, " $a = ", -s $a;
