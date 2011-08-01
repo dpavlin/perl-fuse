@@ -6,7 +6,9 @@ plan tests => 4;
 
 my (@stat);
 chdir($_point);
-system("echo frog >file");
+open($file, '>', 'file');
+print $file "frog\n";
+close($file);
 
 SKIP: {
 	skip('Need root to give away ownership', 4) unless ($UID == 0);

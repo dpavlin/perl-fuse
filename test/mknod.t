@@ -4,13 +4,14 @@ use Test::More;
 plan tests => 24;
 use English;
 use Unix::Mknod qw(:all);
-use Fcntl qw(:mode);
+use Fcntl qw(S_IFCHR S_IFBLK);
 use POSIX;
 
 my (@stat);
 
 chdir($_point);
-ok(!(system("touch reg"      )>>8),"create normal file");
+ok(open($file, '>', 'reg'),"create normal file");
+close($file);
 ok(defined mkfifo($_point.'/fifo', 0600),"create fifo");
 
 chdir($_real);

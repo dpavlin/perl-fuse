@@ -14,8 +14,11 @@ unlink("def");
 # bug: doing a 'cp -a' on a directory which contains a symlink
 # reports an error
 mkdir("dira");
-system("cd dira; touch filea; ln -s filea fileb");
+open($file, '>', 'dira/filea');
+close($file);
+symlink('filea', 'dira/fileb');
 my $cp = 'cp -a';
 if ($^O eq 'netbsd') { $cp = 'cp -R'; }
 is(system($cp . " dira dirb")>>8,0,$cp);
-system("rm -rf dira dirb");
+map { unlink($_) } ('dira/filea', 'dira/fileb', 'dirb/filea', 'dirb/fileb');
+map { rmdir($_) } ('dira', 'dirb');

@@ -7,7 +7,10 @@ plan tests => 2 * scalar @names;
 chdir($_real);
 
 # create entries
-map { system("touch \"$_\"") } @names;
+foreach $fname (@names) {
+    open($file, '>', $fname);
+    close($file);
+}
 
 # make sure they exist in real dir
 opendir(REAL,$_real);

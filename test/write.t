@@ -6,7 +6,9 @@ my ($data);
 chdir($_point);
 undef $/; # slurp it all
 # create file
-system("echo frogbing >writefile");
+open($file, '>', 'writefile');
+print $file "frogbing\n";
+close($file);
 
 # fetch contents of file
 ok(open(FILE,"writefile"),"open");
