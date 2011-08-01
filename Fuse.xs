@@ -32,9 +32,10 @@
 /* Global Data */
 
 #define MY_CXT_KEY "Fuse::_guts" XS_VERSION
-/* #if FUSE_VERSION >= 28
-# define N_CALLBACKS 41 */
-#if FUSE_VERSION >= 26
+#if FUSE_VERSION >= 28
+# define N_CALLBACKS 40
+/* # define N_CALLBACKS 41 */
+#elif FUSE_VERSION >= 26
 # define N_CALLBACKS 38
 #elif FUSE_VERSION >= 25
 # define N_CALLBACKS 35
@@ -1418,7 +1419,6 @@ int _PLfuse_bmap(const char *file, size_t blocksize, uint64_t *idx) {
 }
 #endif /* FUSE_VERSION >= 26 */
 
-#if 0
 #if FUSE_VERSION >= 28
 int _PLfuse_ioctl(const char *file, int cmd, void *arg,
                   struct fuse_file_info *fi, unsigned int flags, void *data) {
@@ -1430,6 +1430,7 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(cmd)));
+    XPUSHs(sv_2mortal(newSViv((uintptr_t)arg)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	if (_IOC_DIR(cmd) & _IOC_READ)
 		XPUSHs(sv_2mortal(newSVpvn(data, _IOC_SIZE(cmd))));
@@ -1442,8 +1443,10 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		if (rv == 2) {
 			SV *sv = POPs;
-			unsigned int len;
+			size_t len;
 			char *rdata = SvPV(sv, len);
+            rv--;
+
 			if (len > _IOC_SIZE(cmd)) {
 				fprintf(stderr, "ioctl(): returned data was too large for data area\n");
 				rv = -EFBIG;
@@ -1452,8 +1455,6 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 				memset(data, 0, _IOC_SIZE(cmd));
 				memcpy(data, rdata, len);
 			}
-
-			rv--;
 		}
 		else {
 			fprintf(stderr, "ioctl(): ioctl was a write op, but no data was returned from call?\n");
@@ -1470,12 +1471,13 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	return rv;
 }
 
+#if 0
 int _PLfuse_poll(const char *file, struct fuse_file_info *fi,
                  struct fuse_pollhandle *ph, unsigned *reventsp) {
 
 }
-#endif /* FUSE_VERSION >= 28 */
 #endif
+#endif /* FUSE_VERSION >= 28 */
 
 struct fuse_operations _available_ops = {
 getattr:		_PLfuse_getattr,
@@ -1522,12 +1524,12 @@ lock:			_PLfuse_lock,
 utimens:		_PLfuse_utimens,
 bmap:			_PLfuse_bmap,
 #endif /* FUSE_VERSION >= 26 */
-#if 0
 #if FUSE_VERSION >= 28
 ioctl:			_PLfuse_ioctl,
+#if 0
 poll:			_PLfuse_poll,
-#endif /* FUSE_VERSION >= 28 */
 #endif
+#endif /* FUSE_VERSION >= 28 */
 };
 
 MODULE = Fuse		PACKAGE = Fuse

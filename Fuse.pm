@@ -77,16 +77,17 @@ sub main {
 	if ($fuse_version >= 2.6) {
 		push(@names, qw/lock utimens bmap/);
 	}
-#	if ($fuse_version >= 2.8) {
-#		# junk doesn't contain a function pointer, and hopefully
-#		# never will; it's a "dead" zone in the struct
-#		# fuse_operations where a flag bit is declared. we don't
-#		# need to concern ourselves with it, and it appears any
-#		# arch with a 64 bit pointer will align everything to
-#		# 8 bytes, making the question of pointer alignment for
-#		# the last 2 wrapper functions no big thing.
+	if ($fuse_version >= 2.8) {
+		# junk doesn't contain a function pointer, and hopefully
+		# never will; it's a "dead" zone in the struct
+		# fuse_operations where a flag bit is declared. we don't
+		# need to concern ourselves with it, and it appears any
+		# arch with a 64 bit pointer will align everything to
+		# 8 bytes, making the question of pointer alignment for
+		# the last 2 wrapper functions no big thing.
+		push(@names, qw/junk ioctl/);
 #		push(@names, qw/junk ioctl poll/);
-#	}
+	}
 	my @subs = map {undef} @names;
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
