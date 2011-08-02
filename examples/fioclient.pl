@@ -10,11 +10,6 @@ use Fcntl qw(:mode);
 use Errno qw(:POSIX);
 use POSIX;
 
-use constant FIOC_NAME => 'fioc';
-use constant FIOC_NONE  => 0;
-use constant FIOC_ROOT  => 1;
-use constant FIOC_FILE  => 2;
-
 require 'asm/ioctl.ph';
 
 our %sizeof = ('int' => 4);
