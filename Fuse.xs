@@ -1430,7 +1430,6 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	XPUSHs(sv_2mortal(newSViv(cmd)));
-    XPUSHs(sv_2mortal(newSViv((uintptr_t)arg)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	if (_IOC_DIR(cmd) & _IOC_WRITE)
 		XPUSHs(sv_2mortal(newSVpvn(data, _IOC_SIZE(cmd))));
@@ -1457,7 +1456,7 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 			}
 		}
 		else {
-			fprintf(stderr, "ioctl(): ioctl was a write op, but no data was returned from call?\n");
+			fprintf(stderr, "ioctl(): ioctl was a read op, but no data was returned from call?\n");
 			rv = -EFAULT;
 		}
 	}
