@@ -5,7 +5,7 @@
 
 #include <fuse.h>
 
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if (defined(__FreeBSD__) && __FreeBSD__ < 10) || defined(__NetBSD__)
 # define XATTR_CREATE 1
 # define XATTR_REPLACE 2
 #else
@@ -1617,7 +1617,6 @@ fuse_version()
 	OUTPUT:
 	RETVAL
 
-#ifndef __FreeBSD__
 SV *
 XATTR_CREATE()
 	CODE:
@@ -1631,8 +1630,6 @@ XATTR_REPLACE()
 	RETVAL = newSViv(XATTR_REPLACE);
 	OUTPUT:
 	RETVAL
-
-#endif
 
 void
 perl_fuse_main(...)
