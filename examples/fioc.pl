@@ -3,6 +3,9 @@
 use strict;
 no strict qw(refs);
 
+use threads;
+use threads::shared;
+
 use Carp;
 local $SIG{'__WARN__'} = \&Carp::cluck;
 
@@ -10,9 +13,9 @@ use Fuse;
 use Fcntl qw(:mode);
 use POSIX;
 
-my $fioc_size = 0;
+my $fioc_size :shared = 0;
 use constant FIOC_NAME => 'fioc';
-my $fioc_buf = '';
+my $fioc_buf :shared = '';
 use constant FIOC_NONE  => 0;
 use constant FIOC_ROOT  => 1;
 use constant FIOC_FILE  => 2;
@@ -27,7 +30,7 @@ sub fioc_resize {
     my ($size) = @_;
     print 'called ', (caller(0))[3], "\n";
     return 0 if $size == $fioc_size;
-    
+
     if ($size < $fioc_size) {
         $fioc_buf = substr($fioc_buf, 0, $size);
     }
@@ -110,6 +113,7 @@ sub fioc_read {
 sub fioc_write {
     my ($path, $data, $offset) = @_;
     print 'called ', (caller(0))[3], "\n";
+    lock($fioc_buf);
 
     return -&EINVAL if fioc_file_type($path) != FIOC_FILE;
 
@@ -124,6 +128,7 @@ sub fioc_write {
 sub fioc_truncate {
     my ($path, $size) = @_;
     print 'called ', (caller(0))[3], "\n";
+    lock($fioc_buf);
 
     return -&EINVAL if fioc_file_type($path) != FIOC_FILE;
 
@@ -152,6 +157,7 @@ sub fioc_ioctl {
         return(0, pack('L', $fioc_size));
     }
     elsif ($cmd == FIOC_SET_SIZE) {
+        lock($fioc_buf);
         fioc_resize(unpack('L', $data));
         return 0;
     }
@@ -169,4 +175,5 @@ Fuse::main(
     'open'      => 'main::fioc_open',
     'read'      => 'main::fioc_read',
     'write'     => 'main::fioc_write',
-    'ioctl'     => 'main::fioc_ioctl');
+    'ioctl'     => 'main::fioc_ioctl',
+    'threaded'  => 1);
