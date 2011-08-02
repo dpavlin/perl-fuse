@@ -277,6 +277,7 @@ for Fuse API v2.6, will return "2.6".
 =head3 getattr
 
 Arguments:  filename.
+
 Returns a list, very similar to the 'stat' function (see
 perlfunc).  On error, simply return a single numeric scalar
 value (e.g. "return -ENOENT();").
@@ -312,6 +313,7 @@ Here are the meaning of the fields:
 =head3 readlink
 
 Arguments:  link pathname.
+
 Returns a scalar: either a numeric constant, or a text string.
 
 This is called when dereferencing symbolic links, to learn the target.
@@ -321,6 +323,7 @@ example rv: return "/proc/self/fd/stdin";
 =head3 getdir
 
 Arguments:  Containing directory name.
+
 Returns a list: 0 or more text strings (the filenames), followed by a numeric errno (usually 0).
 
 This is used to obtain directory listings.  It's opendir(), readdir(), filldir() and closedir() all in one call.
@@ -330,6 +333,7 @@ example rv: return ('.', 'a', 'b', 0);
 =head3 mknod
 
 Arguments:  Filename, numeric modes, numeric device
+
 Returns an errno (0 upon success, as usual).
 
 This function is called for all non-directory, non-symlink nodes,
@@ -338,6 +342,7 @@ not just devices.
 =head3 mkdir
 
 Arguments:  New directory pathname, numeric modes.
+
 Returns an errno.
 
 Called to create a directory.
@@ -345,6 +350,7 @@ Called to create a directory.
 =head3 unlink
 
 Arguments:  Filename.
+
 Returns an errno.
 
 Called to remove a file, device, or symlink.
@@ -352,6 +358,7 @@ Called to remove a file, device, or symlink.
 =head3 rmdir
 
 Arguments:  Pathname.
+
 Returns an errno.
 
 Called to remove a directory.
@@ -359,6 +366,7 @@ Called to remove a directory.
 =head3 symlink
 
 Arguments:  Existing filename, symlink name.
+
 Returns an errno.
 
 Called to create a symbolic link.
@@ -366,6 +374,7 @@ Called to create a symbolic link.
 =head3 rename
 
 Arguments:  old filename, new filename.
+
 Returns an errno.
 
 Called to rename a file, and/or move a file from one directory to another.
@@ -373,6 +382,7 @@ Called to rename a file, and/or move a file from one directory to another.
 =head3 link
 
 Arguments:  Existing filename, hardlink name.
+
 Returns an errno.
 
 Called to create hard links.
@@ -380,6 +390,7 @@ Called to create hard links.
 =head3 chmod
 
 Arguments:  Pathname, numeric modes.
+
 Returns an errno.
 
 Called to change permissions on a file/directory/device/symlink.
@@ -387,6 +398,7 @@ Called to change permissions on a file/directory/device/symlink.
 =head3 chown
 
 Arguments:  Pathname, numeric uid, numeric gid.
+
 Returns an errno.
 
 Called to change ownership of a file/directory/device/symlink.
@@ -394,6 +406,7 @@ Called to change ownership of a file/directory/device/symlink.
 =head3 truncate
 
 Arguments:  Pathname, numeric offset.
+
 Returns an errno.
 
 Called to truncate a file, at the given offset.
@@ -401,6 +414,7 @@ Called to truncate a file, at the given offset.
 =head3 utime
 
 Arguments:  Pathname, numeric actime, numeric modtime.
+
 Returns an errno.
 
 Called to change access/modification times for a file/directory/device/symlink.
@@ -409,6 +423,7 @@ Called to change access/modification times for a file/directory/device/symlink.
 
 Arguments:  Pathname, numeric flags (which is an OR-ing of stuff like O_RDONLY
 and O_SYNC, constants you can import from POSIX), fileinfo hash reference.
+
 Returns an errno, a file handle (optional).
 
 No creation, or trunctation flags (O_CREAT, O_EXCL, O_TRUNC) will be passed to open().
@@ -422,6 +437,7 @@ Optionally a file handle may be returned, which will be passed to subsequent rea
 =head3 read
 
 Arguments:  Pathname, numeric requested size, numeric offset, file handle
+
 Returns a numeric errno, or a string scalar with up to $requestedsize bytes of data.
 
 Called in an attempt to fetch a portion of the file.
@@ -437,6 +453,7 @@ Called in an attempt to write (or overwrite) a portion of the file.  Be prepared
 =head3 statfs
 
 Arguments:  none
+
 Returns any of the following:
 
 -ENOANO()
@@ -452,6 +469,7 @@ or
 =head3 flush
 
 Arguments: Pathname, file handle
+
 Returns an errno or 0 on success.
 
 Called to synchronise any cached data. This is called before the file
@@ -468,6 +486,7 @@ for every file with the same pathname and flags as were passed to open.
 =head3 fsync
 
 Arguments: Pathname, numeric flags
+
 Returns an errno or 0 on success.
 
 Called to synchronise the file's contents. If flags is non-zero,
@@ -476,6 +495,7 @@ only synchronise the user data. Otherwise synchronise the user and meta data.
 =head3 setxattr
 
 Arguments: Pathname, extended attribute's name, extended attribute's value, numeric flags (which is an OR-ing of XATTR_CREATE and XATTR_REPLACE 
+
 Returns an errno or 0 on success.
 
 Called to set the value of the named extended attribute.
@@ -499,6 +519,7 @@ or:
 =head3 getxattr
 
 Arguments: Pathname, extended attribute's name
+
 Returns an errno, 0 if there was no value, or the extended attribute's value.
 
 Called to get the value of the named extended attribute.
@@ -506,11 +527,13 @@ Called to get the value of the named extended attribute.
 =head3 listxattr
 
 Arguments: Pathname
+
 Returns a list: 0 or more text strings (the extended attribute names), followed by a numeric errno (usually 0).
 
 =head3 removexattr
 
 Arguments: Pathname, extended attribute's name
+
 Returns an errno or 0 on success.
 
 =head3 opendir
@@ -525,6 +548,7 @@ that.
 =head3 readdir
 
 Arguments: Pathname of a directory, numeric offset, (optional) directory handle
+
 Returns a list of 0 or more entries, followed by a numeric errno (usually 0).
 The entries can be simple strings (filenames), or arrays containing an
 offset number, the filename, and optionally an array ref containing the
@@ -542,6 +566,7 @@ Note that if this call is implemented, it overrides getdir() ALWAYS.
 =head3 releasedir
 
 Arguments: Pathname of a directory, (optional) directory handle
+
 Returns an errno or 0 on success
 
 Called when there are no more references to an opened directory. Called once
@@ -552,6 +577,7 @@ code will not propagate to any corresponding closedir() calls.
 =head3 fsyncdir
 
 Arguments: Pathname of a directory, numeric flags, (optional) directory handle
+
 Returns an errno or 0 on success.
 
 Called to synchronize any changes to a directory's contents. If flag is
@@ -561,16 +587,19 @@ metadata.
 =head3 init
 
 Arguments: None.
+
 Returns (optionally) an SV to be passed as private_data via fuse_get_context().
 
 =head3 destroy
 
 Arguments: (optional) private data SV returned from init(), if any.
+
 Returns nothing.
 
 =head3 access
 
 Arguments: Pathname, access mode flags
+
 Returns an errno or 0 on success.
 
 Determine if the user attempting to access the indicated file has access to
@@ -580,6 +609,7 @@ fuse_get_context(). See access(2) for more information.
 =head3 create
 
 Arguments: Pathname, create mask, open mode flags
+
 Returns errno or 0 on success, and (optional) file handle.
 
 Create a file with the path indicated, then open a handle for reading and/or
@@ -589,6 +619,7 @@ open() as part of the call.
 =head3 ftruncate
 
 Arguments: Pathname, numeric offset, (optional) file handle
+
 Returns errno or 0 on success
 
 Like truncate(), but on an opened file.
@@ -596,6 +627,7 @@ Like truncate(), but on an opened file.
 =head3 fgetattr
 
 Arguments: Pathname, (optional) file handle
+
 Returns a list, very similar to the 'stat' function (see
 perlfunc).  On error, simply return a single numeric scalar
 value (e.g. "return -ENOENT();").
@@ -605,6 +637,7 @@ Like getattr(), but on an opened file.
 =head3 lock
 
 Arguments: Pathname, numeric command code, hashref containing lock parameters, (optional) file handle
+
 Returns errno or 0 on success
 
 Used to lock or unlock regions of a file. Locking is handled locally, but this
@@ -617,6 +650,7 @@ for the lock constants can be obtained by importing Fcntl.
 =head3 utimens
 
 Arguments: Pathname, last accessed time, last modified time
+
 Returns errno or 0 on success
 
 Like utime(), but allows time resolution down to the nanosecond. Currently
@@ -629,12 +663,28 @@ Note that if this call is implemented, it overrides utime() ALWAYS.
 =head3 bmap
 
 Arguments: Pathname, numeric blocksize, numeric block number
+
 Returns errno or 0 on success, and physical block number if successful
 
 Used to map a block number offset in a file to the physical block offset
 on the block device backing the file system. This is intended for
 filesystems that are stored on an actual block device, with the 'blkdev'
 option passed.
+
+=head3 ioctl
+
+Arguments: Pathname, (signed) ioctl command code, flags, data if ioctl op is a write, (optional) file handle
+
+Returns errno or 0 on success, and data if ioctl op is a read
+
+Used to handle ioctl() operations on files. See ioctl(2) for more
+information on the fine details of ioctl operation numbers. May need to
+h2ph system headers to get the necessary macros; keep in mind the macros
+are highly OS-dependent.
+
+Keep in mind that read and write are from the client perspective, so
+read from our end means data is going *out*, and write means data is
+coming *in*. It can be slightly confusing.
 
 =head1 AUTHOR
 
