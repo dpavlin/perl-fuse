@@ -145,17 +145,14 @@ sub fioc_ioctl {
     print 'called ', (caller(0))[3], "\n";
     $cmd = unpack('L', pack('l', $cmd));
 
-    print("fioc_ioctl(): path is \"$path\", cmd is $cmd, flags is $flags\n");
     return -&EINVAL if fioc_file_type($path) != FIOC_FILE;
 
     return -&ENOSYS if $flags & 0x1;
 
     if ($cmd == FIOC_GET_SIZE) {
-        print "handling FIOC_GET_SIZE\n";
         return(0, pack('L', $fioc_size));
     }
     elsif ($cmd == FIOC_SET_SIZE) {
-        print "handling FIOC_SET_SIZE\n";
         fioc_resize(unpack('L', $data));
         return 0;
     }
