@@ -73,12 +73,6 @@ symbolic references (i.e. passing "main::cb" instead of \&cb).  This doesn't
 allow things like closures, lexical subs and that sort of thing, but it does
 work for me.
 
-The current test framework seems to work well, but the underlying mount/
-unmount infrastructure is a crock.  I am not pleased with that code.
-
-While most things work, I do still have a TODO list:
-* need to sort out cleaner mount semantics for the test framework
-
 Currently tests have been attempted and succeeded on:
   * Ubuntu 10.10/amd64
   * Ubuntu 11.04/amd64
