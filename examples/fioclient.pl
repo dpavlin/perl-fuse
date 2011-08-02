@@ -43,13 +43,14 @@ if ($ARGV[1] eq 's') {
     if (!defined $ARGV[2]) {
         my $size;
         my $rv = ioctl($file, FIOC_GET_SIZE, $size);
-        if (ioctl($file, FIOC_GET_SIZE, $size) != 0) {
+        if (!defined($rv) || $rv != 0) {
             croak($!);
         }
         printf("\%u\n", unpack('L', $size));
     }
     else {
-        if (ioctl($file, FIOC_SET_SIZE, pack('L', $ARGV[2])) != 0) {
+        my $rv = ioctl($file, FIOC_SET_SIZE, pack('L', $ARGV[2]));
+        if (!defined($rv) || $rv != 0) {
             croak($!);
         }
     }
