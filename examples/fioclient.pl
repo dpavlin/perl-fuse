@@ -15,38 +15,11 @@ use constant FIOC_NONE  => 0;
 use constant FIOC_ROOT  => 1;
 use constant FIOC_FILE  => 2;
 
-sub _IOC_NRBITS  { 8 }
-sub _IOC_NRMASK  { ( 1 << &_IOC_NRBITS ) - 1 }
-sub _IOC_NRSHIFT { 0 }
+require 'asm/ioctl.ph';
 
-sub _IOC_TYPEBITS  { 8 }
-sub _IOC_TYPEMASK  { ( 1 << &_IOC_TYPEBITS ) - 1 }
-sub _IOC_TYPESHIFT { &_IOC_NRSHIFT + &_IOC_NRBITS }
-
-sub _IOC_SIZEBITS { ( POSIX::uname() )[4] =~ /^i[3-6]86|x86_64$/ ? 14 : 13 }
-sub _IOC_SIZEMASK  { ( 1 << &_IOC_SIZEBITS ) - 1 }
-sub _IOC_SIZESHIFT { &_IOC_TYPESHIFT + &_IOC_TYPEBITS }
-
-sub _IOC_DIRBITS  { 32 - &_IOC_NRBITS - &_IOC_TYPEBITS - &_IOC_SIZEBITS }
-sub _IOC_DIRMASK  { ( 1 << &_IOC_DIRBITS ) - 1 }
-sub _IOC_DIRSHIFT { &_IOC_SIZESHIFT + &_IOC_SIZEBITS }
-
-sub _IOC_NONE  { ( POSIX::uname() )[4] =~ /^i[3-6]86|x86_64$/ ? 0 : 1 }
-sub _IOC_WRITE { ( POSIX::uname() )[4] =~ /^i[3-6]86|x86_64$/ ? 1 : 4 }
-sub _IOC_READ  { ( POSIX::uname() )[4] =~ /^i[3-6]86|x86_64$/ ? 2 : 2 }
-
-sub _IOC ($$$$) {
-  ( $_[0] << &_IOC_DIRSHIFT ) |  ( ord( $_[1] ) << &_IOC_TYPESHIFT ) |
-    ( $_[2] << &_IOC_NRSHIFT ) | ( $_[3] << &_IOC_SIZESHIFT );
-}
-
-sub _IO ($$)    { &_IOC( &_IOC_NONE,               $_[0], $_[1], 0 ) }
-sub _IOR ($$$)  { &_IOC( &_IOC_READ,               $_[0], $_[1], $_[2] ) }
-sub _IOW ($$$)  { &_IOC( &_IOC_WRITE,              $_[0], $_[1], $_[2] ) }
-sub _IOWR ($$$) { &_IOC( &_IOC_READ | &_IOC_WRITE, $_[0], $_[1], $_[2] ) }
-
-sub FIOC_GET_SIZE { _IOR('E', 0, 4); }
-sub FIOC_SET_SIZE { _IOW('E', 1, 4); }
+our %sizeof = ('int' => 4);
+sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'int'); }
+sub FIOC_SET_SIZE { _IOW(ord 'E', 1, 'int'); }
 
 sub usage {
     print <<'_EOT_';
