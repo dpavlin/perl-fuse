@@ -1432,7 +1432,7 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	XPUSHs(sv_2mortal(newSViv(cmd)));
     XPUSHs(sv_2mortal(newSViv((uintptr_t)arg)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
-	if (_IOC_DIR(cmd) & _IOC_READ)
+	if (_IOC_DIR(cmd) & _IOC_WRITE)
 		XPUSHs(sv_2mortal(newSVpvn(data, _IOC_SIZE(cmd))));
 	else
 		XPUSHs(&PL_sv_undef);
@@ -1440,7 +1440,7 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[39],G_ARRAY);
 	SPAGAIN;
-	if (_IOC_DIR(cmd) & _IOC_WRITE) {
+	if (_IOC_DIR(cmd) & _IOC_READ) {
 		if (rv == 2) {
 			SV *sv = POPs;
 			size_t len;
