@@ -29,7 +29,7 @@ package main;
 
 chomp(my $fusever = `pkg-config --modversion fuse 2> /dev/null`);
 # Required for refuse on NetBSD
-unless ($fusever) {
+unless ($fusever && $^O eq 'netbsd') {
     chomp($fusever = `fusermount -V`);
     $fusever =~ s/^.*?version:\s+//;
 }
