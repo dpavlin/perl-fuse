@@ -3,12 +3,11 @@
 use strict;
 no strict qw(refs);
 
-use Carp ();
+use Carp;
 local $SIG{'__WARN__'} = \&Carp::cluck;
 
 use Fuse;
 use Fcntl qw(:mode);
-use Errno qw(:POSIX);
 use POSIX;
 
 my $fioc_size = 0;
