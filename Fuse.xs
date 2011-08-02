@@ -1423,6 +1423,7 @@ int _PLfuse_bmap(const char *file, size_t blocksize, uint64_t *idx) {
 int _PLfuse_ioctl(const char *file, int cmd, void *arg,
                   struct fuse_file_info *fi, unsigned int flags, void *data) {
 	int rv;
+	SV *sv = NULL;
 	FUSE_CONTEXT_PRE;
 	DEBUGf("ioctl begin\n");
 	ENTER;
@@ -1439,12 +1440,18 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[39],G_ARRAY);
 	SPAGAIN;
-	if (_IOC_DIR(cmd) & _IOC_READ) {
-		if (rv == 2) {
-			SV *sv = POPs;
+	if ((_IOC_DIR(cmd) & _IOC_READ) && (rv == 2)) {
+		sv = POPs;
+		rv--;
+	}
+
+	if (rv > 0)
+		rv = POPi;
+
+	if ((_IOC_DIR(cmd) & _IOC_READ) && !rv) {
+		if (sv) {
 			size_t len;
 			char *rdata = SvPV(sv, len);
-            rv--;
 
 			if (len > _IOC_SIZE(cmd)) {
 				fprintf(stderr, "ioctl(): returned data was too large for data area\n");
@@ -1460,8 +1467,6 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 			rv = -EFAULT;
 		}
 	}
-	if (rv > 0)
-		rv = POPi;
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
