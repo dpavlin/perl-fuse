@@ -1430,7 +1430,10 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	SAVETMPS;
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
-	XPUSHs(sv_2mortal(newSViv(cmd)));
+	/* I don't know why cmd is a signed int in the first place;
+	 * casting as unsigned so stupid tricks don't have to be done on
+	 * the perl side */
+	XPUSHs(sv_2mortal(newSViv((unsigned int)cmd)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	if (_IOC_DIR(cmd) & _IOC_WRITE)
 		XPUSHs(sv_2mortal(newSVpvn(data, _IOC_SIZE(cmd))));

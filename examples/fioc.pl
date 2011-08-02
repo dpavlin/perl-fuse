@@ -147,7 +147,6 @@ sub fioc_readdir {
 sub fioc_ioctl {
     my ($path, $cmd, $flags, $data) = @_;
     print 'called ', (caller(0))[3], "\n";
-    $cmd = unpack('L', pack('l', $cmd));
 
     return -&EINVAL if fioc_file_type($path) != FIOC_FILE;
 
