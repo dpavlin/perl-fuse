@@ -25,6 +25,7 @@ require 'asm/ioctl.ph';
 our %sizeof = ('int' => 4);
 sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'int'); }
 sub FIOC_SET_SIZE { _IOW(ord 'E', 1, 'int'); }
+sub TCGETS { 0x5401; }
 
 sub fioc_resize {
     my ($size) = @_;
@@ -87,9 +88,7 @@ sub fioc_open {
     my ($path, $flags, $info) = @_;
     print 'called ', (caller(0))[3], "\n";
 
-    if (fioc_file_type($path) != FIOC_NONE) {
-        return 0;
-    }
+    return 0 if fioc_file_type($path) != FIOC_NONE;
     return -&ENOENT;
 }
 
@@ -98,10 +97,7 @@ sub fioc_read {
     print 'called ', (caller(0))[3], "\n";
 
     return -&EINVAL if fioc_file_type($path) != FIOC_FILE;
-
-    if ($offset > $fioc_size) {
-        return q{};
-    }
+    return q{} if $offset > $fioc_size;
 
     if ($size > $fioc_size - $offset) {
         $size - $fioc_size - $offset;
@@ -116,10 +112,7 @@ sub fioc_write {
     lock($fioc_buf);
 
     return -&EINVAL if fioc_file_type($path) != FIOC_FILE;
-
-    if (fioc_expand($offset + length($data))) {
-        return -&ENOMEM;
-    }
+    return -&ENOMEM if fioc_expand($offset + length($data));
 
     substr($fioc_buf, $offset, length($data), $data);
     return length($data);
@@ -149,7 +142,6 @@ sub fioc_ioctl {
     print 'called ', (caller(0))[3], "\n";
 
     return -&EINVAL if fioc_file_type($path) != FIOC_FILE;
-
     return -&ENOSYS if $flags & 0x1;
 
     if ($cmd == FIOC_GET_SIZE) {
@@ -159,6 +151,11 @@ sub fioc_ioctl {
         lock($fioc_buf);
         fioc_resize(unpack('L', $data));
         return 0;
+    }
+    elsif ($cmd == TCGETS) {
+        # perl sends TCGETS as part of calling isatty() on opening a file;
+        # this appears to be a more canonical answer
+        return -&ENOTTY;
     }
 
     return -&EINVAL;
