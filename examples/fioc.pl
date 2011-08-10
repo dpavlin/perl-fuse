@@ -1,5 +1,12 @@
 #!/usr/bin/env perl
 
+# fioc.pl: A Perl conversion of the fioc example IOCTL server program
+# from the FUSE distribution. I've endeavored to stay pretty close
+# structure-wise to the C version, while using Perl-specific features.
+# I wrote this to provide a way to verify my ioctl() wrapper
+# implementation would work properly. So far, it seems to, and it will
+# interoperate with the C client as well.
+
 use strict;
 no strict qw(refs);
 
@@ -22,10 +29,11 @@ use constant FIOC_FILE  => 2;
 
 require 'asm/ioctl.ph';
 
-our %sizeof = ('int' => 4);
-sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'int'); }
-sub FIOC_SET_SIZE { _IOW(ord 'E', 1, 'int'); }
+our %sizeof = ('size_t' => length(pack('L!')));
+sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'size_t'); }
+sub FIOC_SET_SIZE { _IOW(ord 'E', 1, 'size_t'); }
 sub TCGETS { 0x5401; }
+use constant FUSE_IOCTL_COMPAT => 0x1;
 
 sub fioc_resize {
     my ($size) = @_;
@@ -142,14 +150,14 @@ sub fioc_ioctl {
     print 'called ', (caller(0))[3], "\n";
 
     return -&EINVAL if fioc_file_type($path) != FIOC_FILE;
-    return -&ENOSYS if $flags & 0x1;
+    return -&ENOSYS if $flags & FUSE_IOCTL_COMPAT;
 
     if ($cmd == FIOC_GET_SIZE) {
-        return(0, pack('L', $fioc_size));
+        return(0, pack('L!', $fioc_size));
     }
     elsif ($cmd == FIOC_SET_SIZE) {
         lock($fioc_buf);
-        fioc_resize(unpack('L', $data));
+        fioc_resize(unpack('L!', $data));
         return 0;
     }
     elsif ($cmd == TCGETS) {

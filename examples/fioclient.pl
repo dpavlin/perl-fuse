@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 
+# fioclient.pl: A Perl version of the fioclient IOCTL client example from
+# the FUSE distribution.
+
 use strict;
 no strict qw(refs);
 
@@ -12,9 +15,9 @@ use POSIX;
 
 require 'asm/ioctl.ph';
 
-our %sizeof = ('int' => 4);
-sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'int'); }
-sub FIOC_SET_SIZE { _IOW(ord 'E', 1, 'int'); }
+our %sizeof = ('size_t' => length(pack('L!')));
+sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'size_t'); }
+sub FIOC_SET_SIZE { _IOW(ord 'E', 1, 'size_t'); }
 
 sub usage {
     print <<'_EOT_';
@@ -41,10 +44,10 @@ if ($ARGV[1] eq 's') {
         if (!defined($rv) || $rv != 0) {
             croak($!);
         }
-        printf("\%u\n", unpack('L', $size));
+        printf("\%u\n", unpack('L!', $size));
     }
     else {
-        my $rv = ioctl($file, FIOC_SET_SIZE, pack('L', $ARGV[2]));
+        my $rv = ioctl($file, FIOC_SET_SIZE, pack('L!', $ARGV[2]));
         if (!defined($rv) || $rv != 0) {
             croak($!);
         }
