@@ -20,7 +20,7 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
+		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
 		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ],
 		    'ioctl' => [ qw(FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
 		    );
@@ -63,10 +63,6 @@ sub AUTOLOAD {
 }
 
 bootstrap Fuse $VERSION;
-
-if (fuse_version() >= 2.8) {
-	push(@{$EXPORT_TAGS{'all'}}, qw(notify_poll pollhandle_destroy));
-}
 
 use constant FUSE_IOCTL_COMPAT		=> (1 << 0);
 use constant FUSE_IOCTL_UNRESTRICTED	=> (1 << 1);
