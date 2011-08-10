@@ -32,6 +32,10 @@ test/write.t
 test/pod.t
 examples/example.pl
 examples/example_t.pl
+examples/fioc.pl
+examples/fioclient.pl
+examples/fsel.pl
+examples/fselclient.pl
 examples/loopback.pl
 examples/rmount_remote.pl
 examples/rmount.pl
