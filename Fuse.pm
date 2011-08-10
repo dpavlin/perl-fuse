@@ -25,6 +25,9 @@ our %EXPORT_TAGS = (
 		    'ioctl' => [ qw(FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
 		    );
 
+if (fuse_version() >= 2.8) {
+    push(@{$EXPORT_TAGS{'all'}}, qw(notify_poll pollhandle_destroy));
+
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = ();
@@ -91,8 +94,7 @@ sub main {
 		# arch with a 64 bit pointer will align everything to
 		# 8 bytes, making the question of pointer alignment for
 		# the last 2 wrapper functions no big thing.
-		push(@names, qw/junk ioctl/);
-#		push(@names, qw/junk ioctl poll/);
+		push(@names, qw/junk ioctl poll/);
 	}
 	my @subs = map {undef} @names;
 	my $tmp = 0;
@@ -277,6 +279,39 @@ Access context information about the current Fuse operation.
 Indicates the Fuse version in use; more accurately, indicates the version
 of the Fuse API in use at build time. Returned as a decimal value; i.e.,
 for Fuse API v2.6, will return "2.6".
+
+=head3 Fuse::notify_poll
+
+Only available if the Fuse module is built against libfuse 2.8 or later.
+Use fuse_version() to determine if this is the case. Calling this function
+with a pollhandle argument (as provided to the C<poll> operation
+implementation) will send a notification to the caller poll()ing for
+I/O operation availability. If more than one pollhandle is provided for
+the same filehandle, only use the latest; you *can* send notifications
+to them all, but it is unnecessary and decreases performance.
+
+ONLY supply poll handles fed to you through C<poll> to this function.
+Due to thread safety requirements, we can't currently package the pointer
+up in an object the way we'd like to to prevent this situation, but your
+filesystem server program may segfault, or worse, if you feed things to
+this function which it is not supposed to receive. If you do anyway, we
+take no responsibility for whatever Bad Things(tm) may happen.
+
+=head3 Fuse::pollhandle_destroy
+
+Only available if the Fuse module is built against libfuse 2.8 or later.
+Use fuse_version() to determine if this is the case. This function destroys
+a poll handle (fed to your program through C<poll>). When you are done
+with a poll handle, either because it has been replaced, or because a
+notification has been sent to it, pass it to this function to dispose of
+it safely.
+
+ONLY supply poll handles fed to you through C<poll> to this function.
+Due to thread safety requirements, we can't currently package the pointer
+up in an object the way we'd like to to prevent this situation, but your
+filesystem server program may segfault, or worse, if you feed things to
+this function which it is not supposed to receive. If you do anyway, we
+take no responsibility for whatever Bad Things(tm) may happen.
 
 =head2 FUNCTIONS YOUR FILESYSTEM MAY IMPLEMENT
 
@@ -691,6 +726,25 @@ are highly OS-dependent.
 Keep in mind that read and write are from the client perspective, so
 read from our end means data is going *out*, and write means data is
 coming *in*. It can be slightly confusing.
+
+=head1 poll
+
+Arguments: Pathname, poll handle ID (or undef if none), event mask, (optional) file handle
+
+Returns errno or 0 on success, and updated event mask on success
+
+Used to handle poll() operations on files. See poll(2) to learn more about
+event polling. Use IO::Poll to get the POLLIN, POLLOUT, and other symbols
+to describe the events which can happen on the filehandle. Save the poll
+handle ID to be passed to C<notify_poll> and C<pollhandle_destroy>
+functions, if it is not undef. Threading will likely be necessary for this
+operation to work.
+
+There is not an "out of band" data transfer channel provided as part of
+FUSE, so POLLPRI/POLLRDBAND/POLLWRBAND won't work.
+
+Poll handle is currently a read-only scalar; we are investigating a way
+to make this an object instead.
 
 =head1 AUTHOR
 

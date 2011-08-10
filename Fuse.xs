@@ -33,8 +33,7 @@
 
 #define MY_CXT_KEY "Fuse::_guts" XS_VERSION
 #if FUSE_VERSION >= 28
-# define N_CALLBACKS 40
-/* # define N_CALLBACKS 41 */
+# define N_CALLBACKS 41
 #elif FUSE_VERSION >= 26
 # define N_CALLBACKS 38
 #elif FUSE_VERSION >= 25
@@ -130,8 +129,10 @@ void S_fh_store_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi, SV *sv) {
 			SvSHARE(sv);
 		}
 #endif
-		MAGIC *mg = (SvTYPE(sv) == SVt_PVMG) ? mg_find(sv, PERL_MAGIC_shared_scalar) : NULL;
-		fi->fh = mg ? PTR2IV(mg->mg_ptr) : PTR2IV(sv);
+        /* This seems to be screwing things up... */
+		// MAGIC *mg = (SvTYPE(sv) == SVt_PVMG) ? mg_find(sv, PERL_MAGIC_shared_scalar) : NULL;
+		// fi->fh = mg ? PTR2IV(mg->mg_ptr) : PTR2IV(sv);
+		fi->fh = PTR2IV(sv);
 		if(hv_store_ent(MY_CXT.handles, FH_KEY(fi), SvREFCNT_inc(sv), 0) == NULL) {
 			SvREFCNT_dec(sv);
 		}
@@ -1478,12 +1479,42 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	return rv;
 }
 
-#if 0
 int _PLfuse_poll(const char *file, struct fuse_file_info *fi,
                  struct fuse_pollhandle *ph, unsigned *reventsp) {
-
+	int rv;
+	SV *sv = NULL;
+	FUSE_CONTEXT_PRE;
+	DEBUGf("poll begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(sv_2mortal(newSVpv(file,0)));
+	if (ph) {
+        /* Still gotta figure out how to do this right... */
+		sv = newSViv(PTR2IV(ph));
+        SvREADONLY_on(sv);
+		SvSHARE(sv);
+		XPUSHs(sv);
+	}
+	else
+		XPUSHs(&PL_sv_undef);
+	XPUSHs(sv_2mortal(newSViv(*reventsp)));
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[40],G_ARRAY);
+	SPAGAIN;
+	if (rv > 1) {
+		*reventsp = POPi;
+        rv--;
+    }
+	rv = (rv ? POPi : 0);
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("poll end: %i\n", rv);
+	FUSE_CONTEXT_POST;
+	return rv;
 }
-#endif
 #endif /* FUSE_VERSION >= 28 */
 
 struct fuse_operations _available_ops = {
@@ -1533,9 +1564,7 @@ bmap:			_PLfuse_bmap,
 #endif /* FUSE_VERSION >= 26 */
 #if FUSE_VERSION >= 28
 ioctl:			_PLfuse_ioctl,
-#if 0
 poll:			_PLfuse_poll,
-#endif
 #endif /* FUSE_VERSION >= 28 */
 };
 
@@ -1722,3 +1751,35 @@ perl_fuse_main(...)
 		fuse_loop(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
 	fuse_unmount(mountpoint,fc);
 	fuse_opt_free_args(&args);
+
+#if FUSE_VERSION >= 28
+
+void
+pollhandle_destroy(...)
+    PREINIT:
+	struct fuse_pollhandle *ph;
+    INIT:
+        if (items != 1) {
+            fprintf(stderr, "No pollhandle passed?\n");
+            XSRETURN_UNDEF;
+        }
+	CODE:
+        ph = INT2PTR(struct fuse_pollhandle*, SvIV(ST(0)));
+		fuse_pollhandle_destroy(ph);
+
+int 
+notify_poll(...)
+    PREINIT:
+        struct fuse_pollhandle *ph;
+    INIT:
+        if (items != 1) {
+            fprintf(stderr, "No pollhandle passed?\n");
+            XSRETURN_UNDEF;
+        }
+	CODE:
+        ph = INT2PTR(struct fuse_pollhandle*, SvIV(ST(0)));
+		RETVAL = fuse_notify_poll(ph);
+	OUTPUT:
+		RETVAL
+
+#endif
