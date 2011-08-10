@@ -98,8 +98,6 @@ sub fsel_release {
 sub fsel_read {
     my ($path, $size, $offset, $fh) = @_;
     print 'called ', (caller(0))[3], "\n";
-    ## HACK
-    #$fh = fsel_path_index($path);
     lock($fsel_mutex);
 
     if ($fsel_cnt[$fh] < $size) {
@@ -116,8 +114,6 @@ our $polled_zero :shared = 0;
 sub fsel_poll {
     my ($path, $ph, $revents, $fh) = @_;
     print 'called ', (caller(0))[3], "\n";
-    ## HACK
-    #$fh = fsel_path_index($path);
 
     lock($fsel_mutex);
 
