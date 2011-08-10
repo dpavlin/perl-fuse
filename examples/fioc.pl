@@ -16,7 +16,7 @@ use threads::shared;
 use Carp;
 local $SIG{'__WARN__'} = \&Carp::cluck;
 
-use Fuse;
+use Fuse qw(:all);
 use Fcntl qw(:mode);
 use POSIX;
 
@@ -33,7 +33,6 @@ our %sizeof = ('size_t' => length(pack('L!')));
 sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'size_t'); }
 sub FIOC_SET_SIZE { _IOW(ord 'E', 1, 'size_t'); }
 sub TCGETS { 0x5401; }
-use constant FUSE_IOCTL_COMPAT => 0x1;
 
 sub fioc_resize {
     my ($size) = @_;
