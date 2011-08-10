@@ -54,7 +54,7 @@ unless ($fusever) {
     elsif ($^O eq 'netbsd') {
         $explanation = 'Could not find librefuse? Maybe install "perfuse" from pkgsrc, or upgrade to newer NetBSD';
     }
-    elsif ($^O = 'darwin') {
+    elsif ($^O eq 'darwin') {
         $explanation = 'Please install MacFuse from http://code.google.com/p/macfuse/';
     }
     else {
