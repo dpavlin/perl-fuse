@@ -511,7 +511,7 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	(void) hv_store(fihash, "direct_io",    9, newSViv(fi->direct_io),   0);
 	(void) hv_store(fihash, "keep_cache",  10, newSViv(fi->keep_cache),  0);
 #endif
-#if FUSE_VERSION >= 29
+#if FUSE_VERSION >= 28
 	(void) hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
 #endif
 	XPUSHs(sv_2mortal(newRV_noinc((SV*) fihash)));
@@ -539,7 +539,7 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 		if ((svp = hv_fetch(fihash, "keep_cache",  10, 0)) != NULL)
 			fi->keep_cache  = SvIV(*svp);
 #endif
-#if FUSE_VERSION >= 29
+#if FUSE_VERSION >= 28
 		if ((svp = hv_fetch(fihash, "nonseekable", 11, 0)) != NULL)
  			fi->nonseekable = SvIV(*svp);
 #endif
@@ -1169,7 +1169,7 @@ int _PLfuse_create(const char *file, mode_t mode, struct fuse_file_info *fi) {
 	fihash = newHV();
 	(void) hv_store(fihash, "direct_io",    9, newSViv(fi->direct_io),   0);
 	(void) hv_store(fihash, "keep_cache",  10, newSViv(fi->keep_cache),  0);
-#if FUSE_VERSION >= 29
+#if FUSE_VERSION >= 28
 	(void) hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
 #endif
 	XPUSHs(sv_2mortal(newRV_noinc((SV*) fihash)));
@@ -1195,7 +1195,7 @@ int _PLfuse_create(const char *file, mode_t mode, struct fuse_file_info *fi) {
 			fi->direct_io   = SvIV(*svp);
 		if ((svp = hv_fetch(fihash, "keep_cache",  10, 0)) != NULL)
 			fi->keep_cache  = SvIV(*svp);
-#if FUSE_VERSION >= 29
+#if FUSE_VERSION >= 28
 		if ((svp = hv_fetch(fihash, "nonseekable", 11, 0)) != NULL)
 			fi->nonseekable = SvIV(*svp);
 #endif
