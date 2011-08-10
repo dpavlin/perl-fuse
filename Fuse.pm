@@ -25,9 +25,6 @@ our %EXPORT_TAGS = (
 		    'ioctl' => [ qw(FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
 		    );
 
-if (fuse_version() >= 2.8) {
-    push(@{$EXPORT_TAGS{'all'}}, qw(notify_poll pollhandle_destroy));
-
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = ();
@@ -66,6 +63,10 @@ sub AUTOLOAD {
 }
 
 bootstrap Fuse $VERSION;
+
+if (fuse_version() >= 2.8) {
+	push(@{$EXPORT_TAGS{'all'}}, qw(notify_poll pollhandle_destroy));
+}
 
 use constant FUSE_IOCTL_COMPAT		=> (1 << 0);
 use constant FUSE_IOCTL_UNRESTRICTED	=> (1 << 1);
