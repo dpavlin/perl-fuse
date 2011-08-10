@@ -20,8 +20,9 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version) ],
-		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ]
+		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
+		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ],
+		    'ioctl' => [ qw(FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
 		    );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -62,6 +63,11 @@ sub AUTOLOAD {
 }
 
 bootstrap Fuse $VERSION;
+
+use constant FUSE_IOCTL_COMPAT		=> (1 << 0);
+use constant FUSE_IOCTL_UNRESTRICTED	=> (1 << 1);
+use constant FUSE_IOCTL_RETRY		=> (1 << 2);
+use constant FUSE_IOCTL_MAX_IOV		=> 256;
 
 sub main {
 	my @names = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
