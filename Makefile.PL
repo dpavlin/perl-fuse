@@ -92,9 +92,13 @@ WriteMakefile(
     ($] >= 5.005 ?  ## Add these new keywords supported since 5.005
        (ABSTRACT_FROM   => 'Fuse.pm', # retrieve abstract from module
         AUTHOR          => 'Mark Glines <mark@glines.org>') : ()),
+    ($ExtUtils::MakeMaker::VERSION < 6.3002 ? () : (
+        'LICENSE' => 'LGPL_2_1',
+    )),
     ($ExtUtils::MakeMaker::VERSION < 6.46 ? () : (
         META_MERGE => {
             resources => {
+                license => 'http://www.gnu.org/licenses/lgpl-2.1.html',
                 bugtracker => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Fuse',
                 repository => 'http://github.com/dpavlin/perl-fuse'
             },
