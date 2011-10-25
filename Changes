@@ -90,3 +90,14 @@ Revision history for Perl extension Fuse.
 	  librefuse.
 	- Decrease file sizes in getattr test, to keep test from running
 	  for multiple hours (due to HFS+ not supporting sparse files).
+
+0.15
+	- Eliminate more uses of system() in tests.
+	- Enable the ioctl() operation when built against FUSE 2.8 or later.
+	  Also wrote tests based off fioc.c and fioclient.c from FUSE.
+	- Use smaller getattr test sizes only on MacOS X.
+	- Permanently fix the XATTR_{CREATE,REPLACE} symbols.
+	- Add a wrapper for the poll() operation when built against FUSE 2.8
+	  or later. Also wrote tests based off fsel.c and fselclient.c
+	  from FUSE.
+	- Fixed a thinko in the platform handling chain in Makefile.PL.
