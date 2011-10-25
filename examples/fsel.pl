@@ -14,7 +14,7 @@ use Fcntl qw(:mode);
 use POSIX;
 use IO::Poll qw(POLLIN);
 use Time::HiRes qw(sleep);
-use Data::Dumper;
+use Getopt::Long;
 
 use constant FSEL_CNT_MAX   => 10;
 use constant FSEL_FILES     => 16;
@@ -80,7 +80,6 @@ sub fsel_open {
 
     $info->{'direct_io'} = 1;
     $info->{'nonseekable'} = 1;
-    print "fsel_open(): ", $idx, "\n";
     my $foo = [ $idx + 0 ];
     return (0, $foo->[0]);
 }
@@ -88,16 +87,18 @@ sub fsel_open {
 sub fsel_release {
     my ($path, $flags, $fh) = @_;
     print 'called ', (caller(0))[3], "\n";
+    ## HACK
+    #$fh = fsel_path_index($path);
 
-    print "fsel_release(): \$fh is $fh\n";
     $fsel_open_mask &= ~(1 << $fh);
-    printf("fsel_release(): \$fsel_open_mask is \%x\n", $fsel_open_mask);
     return 0;
 }
 
 sub fsel_read {
     my ($path, $size, $offset, $fh) = @_;
     print 'called ', (caller(0))[3], "\n";
+    ## HACK
+    #$fh = fsel_path_index($path);
     lock($fsel_mutex);
 
     if ($fsel_cnt[$fh] < $size) {
@@ -113,7 +114,9 @@ our $polled_zero :shared = 0;
 
 sub fsel_poll {
     my ($path, $ph, $revents, $fh) = @_;
-    print 'called ', (caller(0))[3], "\n";
+    print 'called ', (caller(0))[3], ", path = \"$path\", fh = $fh, revents = $revents\n";
+    ## HACK
+    #$fh = fsel_path_index($path);
 
     lock($fsel_mutex);
 
@@ -140,8 +143,8 @@ sub fsel_poll {
 }
 
 sub fsel_producer {
-    local $SIG{'KILL'} = sub { threads->exit(); };
     print 'called ', (caller(0))[3], "\n";
+    local $SIG{'KILL'} = sub { threads->exit(); };
     my $tv = 0.25;
     my $idx = 0;
     my $nr = 1;
@@ -178,9 +181,7 @@ sub fsel_producer {
 
 croak("Fuse doesn't have poll") unless Fuse::fuse_version() >= 2.8;
 
-my $thread = threads->create(\&fsel_producer);
-
-Fuse::main(
+my %fuseargs = (
     'mountpoint' => $ARGV[0],
     'getattr'   => 'main::fsel_getattr',
     'readdir'   => 'main::fsel_readdir',
@@ -188,8 +189,21 @@ Fuse::main(
     'release'   => 'main::fsel_release',
     'read'      => 'main::fsel_read',
     'poll'      => 'main::fsel_poll',
-    'threaded'  => 1,
 );
+
+GetOptions(
+    'use-threads'       => sub {
+        print STDERR "Warning: Fuse currently has bugs related to threading which may cause misbehavior\n";
+        $fuseargs{'threaded'} = 1;
+    },
+    'debug'             => sub {
+        $fuseargs{'debug'} = 1;
+    }
+) || croak("Malformed options passed");
+
+my $thread = threads->create(\&fsel_producer);
+
+Fuse::main(%fuseargs);
 
 $thread->kill('KILL');
 $thread->join();
