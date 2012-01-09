@@ -175,6 +175,25 @@ sub x_statfs {
     }
     return 255,1000000,500000,1000000,500000,4096;
 }
+
+# Required for some edge cases where a simple fork() won't do.
+# from http://perldoc.perl.org/perlipc.html#Complete-Dissociation-of-Child    -from-Parent
+sub daemonize {
+    chdir("/") || die "can't chdir to /: $!";
+    open(STDIN, "< /dev/null") || die "can't read /dev/null: $!";
+    open(STDOUT, "> /dev/null") || die "can't write to /dev/null: $!";
+    defined(my $pid = fork()) || die "can't fork: $!";
+    exit if $pid; # non-zero now means I am the parent
+    (setsid() != -1) || die "Can't start a new session: $!";
+    open(STDERR, ">&STDOUT") || die "can't dup stdout: $!";
+
+    if ($pidfile) {
+        open(PIDFILE, '>', $pidfile);
+        print PIDFILE $$, "\n";
+        close(PIDFILE);
+    }
+}
+
 my ($mountpoint) = '';
 $mountpoint = shift(@ARGV) if @ARGV;
 
@@ -182,18 +201,9 @@ if (! -d $mountpoint) {
     print STDERR "ERROR: attempted to mount to non-directory\n";
     return -&ENOTDIR
 }
-my $pid = fork();
-die("fork() failed: $!") unless defined $pid;
 
-if ($pid > 0) {
-    # parent process
-    exit(0);
-}
-if ($pidfile) {
-    open(PIDFILE, '>', $pidfile);
-    print PIDFILE $$, "\n";
-    close(PIDFILE);
-}
+daemonize();
+
 Fuse::main(
     'mountpoint'    => $mountpoint,
     'getattr'       => 'main::x_getattr',
