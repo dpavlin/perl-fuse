@@ -209,7 +209,7 @@ mountopts => string
 
 =over 1
 
-This is a comma seperated list of mount options to pass to the FUSE kernel
+This is a comma separated list of mount options to pass to the FUSE kernel
 module.
 
 At present, it allows the specification of the allow_other
