@@ -187,27 +187,18 @@ many valid keys.  Most of them correspond with names of callback
 functions, as described in section 'FUNCTIONS YOUR FILESYSTEM MAY IMPLEMENT'.
 A few special keys also exist:
 
-
-debug => boolean
-
 =over 1
+
+=item debug => boolean
 
 This turns FUSE call tracing on and off.  Default is 0 (which means off).
 
-=back
-
-mountpoint => string
-
-=over 1
+=item mountpoint => string
 
 The point at which to mount this filesystem.  There is no default, you must
 specify this.  An example would be '/mnt'.
 
-=back
-
-mountopts => string
-
-=over 1
+=item mountopts => string
 
 This is a comma separated list of mount options to pass to the FUSE kernel
 module.
@@ -219,11 +210,7 @@ need 'user_allow_other' in /etc/fuse.conf as per the FUSE documention
   mountopts => "allow_other" or
   mountopts => ""
 
-=back
-
-threaded => boolean
-
-=over 1
+=item threaded => boolean
 
 This turns FUSE multithreading on and off.  The default is 0, meaning your FUSE
 script will run in single-threaded mode.  Note that single-threaded mode also
@@ -247,11 +234,7 @@ you're using are also thread-safe.
 built with USE_ITHREADS, or if you have failed to use threads or
 threads::shared.)
 
-=back
-
-nullpath_ok => boolean
-
-=over 1
+=item nullpath_ok => boolean
 
 This flag tells Fuse to not pass paths for functions that operate on file
 or directory handles. This will yield empty path parameters for functions
@@ -724,7 +707,7 @@ Keep in mind that read and write are from the client perspective, so
 read from our end means data is going *out*, and write means data is
 coming *in*. It can be slightly confusing.
 
-=head1 poll
+=head3 poll
 
 Arguments: Pathname, poll handle ID (or undef if none), event mask, (optional) file handle
 
