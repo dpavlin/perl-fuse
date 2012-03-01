@@ -166,7 +166,7 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 		else
 			rv = -ENOENT;
 	} else {
-        double tm;
+		double tm;
 		result->st_blocks = POPi;
 		result->st_blksize = POPi;
 		/* Do a little gymnastics to transform the fractional part into nsec */
@@ -1003,7 +1003,7 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 					if (SvROK(*svp) &&
 							SvTYPE(av2 = (AV *)SvRV(*svp)) == SVt_PVAV &&
 							av_len(av2) == 12) {
-                        double tm;
+						double tm;
 						st.st_dev     = SvIV(*(av_fetch(av2,  0, FALSE)));
 						st.st_ino     = SvIV(*(av_fetch(av2,  1, FALSE)));
 						st.st_mode    = SvIV(*(av_fetch(av2,  2, FALSE)));
@@ -1284,7 +1284,7 @@ int _PLfuse_fgetattr(const char *file, struct stat *result,
 		else
 			rv = -ENOENT;
 	} else {
-        double tm;
+		double tm;
 		result->st_blocks = POPi;
 		result->st_blksize = POPi;
 		/* Do a little gymnastics to transform the fractional part into nsec */

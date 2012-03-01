@@ -101,3 +101,4 @@ Revision history for Perl extension Fuse.
 	  or later. Also wrote tests based off fsel.c and fselclient.c
 	  from FUSE.
 	- Fixed a thinko in the platform handling chain in Makefile.PL.
+	- Added handling for sub-second [amc]time stamps.
