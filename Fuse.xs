@@ -12,6 +12,12 @@
 # include <sys/xattr.h>
 #endif
 
+#if defined(__linux__)
+# define STAT_NSEC(st, st_xtim) ((st)->st_xtim.tv_nsec)
+#else
+# define STAT_NSEC(st, st_xtim) ((st)->st_xtim##espec.tv_nsec)
+#endif
+
 /* Determine if threads support should be included */
 #ifdef USE_ITHREADS
 # ifdef I_PTHREAD
@@ -160,11 +166,19 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 		else
 			rv = -ENOENT;
 	} else {
+        double tm;
 		result->st_blocks = POPi;
 		result->st_blksize = POPi;
-		result->st_ctime = POPi;
-		result->st_mtime = POPi;
-		result->st_atime = POPi;
+		/* Do a little gymnastics to transform the fractional part into nsec */
+		tm = POPn;
+		result->st_ctime = (int)tm;
+		STAT_NSEC(result, st_ctim) = (tm - (int)tm) * 1000000000;
+		tm = POPn;
+		result->st_mtime = (int)tm;
+		STAT_NSEC(result, st_mtim) = (tm - (int)tm) * 1000000000;
+		tm = POPn;
+		result->st_atime = (int)tm;
+		STAT_NSEC(result, st_atim) = (tm - (int)tm) * 1000000000;
 		result->st_size = POPn;	// we pop double here to support files larger than 4Gb (long limit)
 		result->st_rdev = POPi;
 		result->st_gid = POPi;
@@ -989,6 +1003,7 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 					if (SvROK(*svp) &&
 							SvTYPE(av2 = (AV *)SvRV(*svp)) == SVt_PVAV &&
 							av_len(av2) == 12) {
+                        double tm;
 						st.st_dev     = SvIV(*(av_fetch(av2,  0, FALSE)));
 						st.st_ino     = SvIV(*(av_fetch(av2,  1, FALSE)));
 						st.st_mode    = SvIV(*(av_fetch(av2,  2, FALSE)));
@@ -997,9 +1012,15 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 						st.st_gid     = SvIV(*(av_fetch(av2,  5, FALSE)));
 						st.st_rdev    = SvIV(*(av_fetch(av2,  6, FALSE)));
 						st.st_size    = SvNV(*(av_fetch(av2,  7, FALSE)));
-						st.st_atime   = SvIV(*(av_fetch(av2,  8, FALSE)));
-						st.st_mtime   = SvIV(*(av_fetch(av2,  9, FALSE)));
-						st.st_ctime   = SvIV(*(av_fetch(av2, 10, FALSE)));
+						tm            = SvNV(*(av_fetch(av2,  8, FALSE)));
+						st.st_atime   = (int)tm;
+						STAT_NSEC(&st, st_atim) = (tm - (int)tm) * 1000000000;
+						tm            = SvNV(*(av_fetch(av2,  9, FALSE)));
+						st.st_mtime   = (int)tm;
+						STAT_NSEC(&st, st_mtim) = (tm - (int)tm) * 1000000000;
+						tm            = SvNV(*(av_fetch(av2, 10, FALSE)));
+						st.st_ctime   = (int)tm;
+						STAT_NSEC(&st, st_ctim) = (tm - (int)tm) * 1000000000;
 						st.st_blksize = SvIV(*(av_fetch(av2, 11, FALSE)));
 						st.st_blocks  = SvIV(*(av_fetch(av2, 12, FALSE)));
 						st_filled = 1;
@@ -1263,11 +1284,19 @@ int _PLfuse_fgetattr(const char *file, struct stat *result,
 		else
 			rv = -ENOENT;
 	} else {
+        double tm;
 		result->st_blocks = POPi;
 		result->st_blksize = POPi;
-		result->st_ctime = POPi;
-		result->st_mtime = POPi;
-		result->st_atime = POPi;
+		/* Do a little gymnastics to transform the fractional part into nsec */
+		tm = POPn;
+		result->st_ctime = (int)tm;
+		STAT_NSEC(result, st_ctim) = (tm - (int)tm) * 1000000000;
+		tm = POPn;
+		result->st_mtime = (int)tm;
+		STAT_NSEC(result, st_mtim) = (tm - (int)tm) * 1000000000;
+		tm = POPn;
+		result->st_atime = (int)tm;
+		STAT_NSEC(result, st_atim) = (tm - (int)tm) * 1000000000;
 		result->st_size = POPn;	// we pop double here to support files larger than 4Gb (long limit)
 		result->st_rdev = POPi;
 		result->st_gid = POPi;
