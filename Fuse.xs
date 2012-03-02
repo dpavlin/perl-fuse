@@ -18,6 +18,32 @@
 # define STAT_NSEC(st, st_xtim) ((st)->st_xtim##espec.tv_nsec)
 #endif
 
+/* Implement a macro to handle multiple formats (integer, float, and array
+ * containing seconds and nanoseconds). */
+#define PULL_TIME(st, st_xtim, svp)					\
+{									\
+	SV *sv = svp;							\
+	if (SvROK(sv)) {						\
+		AV *av = (AV *)SvRV(sv);				\
+		if (SvTYPE((SV *)av) != SVt_PVAV) {			\
+			Perl_croak_nocontext("Reference was not array ref"); \
+		}							\
+		if (av_len(av) != 1) {					\
+			Perl_croak_nocontext("Array of incorrect dimension"); \
+		}							\
+		(st)->st_xtim##e = SvIV(*(av_fetch(av, 0, FALSE)));	\
+		STAT_NSEC(st, st_xtim) = SvIV(*(av_fetch(av, 1, FALSE))); \
+	}								\
+	else if (SvNOK(sv) || SvIOK(sv)) {				\
+		double tm = SvNV(sv);					\
+		(st)->st_xtim##e = (int)tm;				\
+		STAT_NSEC(st, st_xtim) = (tm - (int)tm) * 1000000000;	\
+	}								\
+	else {								\
+		Perl_croak_nocontext("Invalid data type passed");	\
+	}								\
+}
+
 /* Determine if threads support should be included */
 #ifdef USE_ITHREADS
 # ifdef I_PTHREAD
@@ -166,19 +192,11 @@ int _PLfuse_getattr(const char *file, struct stat *result) {
 		else
 			rv = -ENOENT;
 	} else {
-		double tm;
 		result->st_blocks = POPi;
 		result->st_blksize = POPi;
-		/* Do a little gymnastics to transform the fractional part into nsec */
-		tm = POPn;
-		result->st_ctime = (int)tm;
-		STAT_NSEC(result, st_ctim) = (tm - (int)tm) * 1000000000;
-		tm = POPn;
-		result->st_mtime = (int)tm;
-		STAT_NSEC(result, st_mtim) = (tm - (int)tm) * 1000000000;
-		tm = POPn;
-		result->st_atime = (int)tm;
-		STAT_NSEC(result, st_atim) = (tm - (int)tm) * 1000000000;
+		PULL_TIME(result, st_ctim, POPs);
+		PULL_TIME(result, st_mtim, POPs);
+		PULL_TIME(result, st_atim, POPs);
 		result->st_size = POPn;	// we pop double here to support files larger than 4Gb (long limit)
 		result->st_rdev = POPi;
 		result->st_gid = POPi;
@@ -1003,7 +1021,6 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 					if (SvROK(*svp) &&
 							SvTYPE(av2 = (AV *)SvRV(*svp)) == SVt_PVAV &&
 							av_len(av2) == 12) {
-						double tm;
 						st.st_dev     = SvIV(*(av_fetch(av2,  0, FALSE)));
 						st.st_ino     = SvIV(*(av_fetch(av2,  1, FALSE)));
 						st.st_mode    = SvIV(*(av_fetch(av2,  2, FALSE)));
@@ -1012,15 +1029,9 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 						st.st_gid     = SvIV(*(av_fetch(av2,  5, FALSE)));
 						st.st_rdev    = SvIV(*(av_fetch(av2,  6, FALSE)));
 						st.st_size    = SvNV(*(av_fetch(av2,  7, FALSE)));
-						tm            = SvNV(*(av_fetch(av2,  8, FALSE)));
-						st.st_atime   = (int)tm;
-						STAT_NSEC(&st, st_atim) = (tm - (int)tm) * 1000000000;
-						tm            = SvNV(*(av_fetch(av2,  9, FALSE)));
-						st.st_mtime   = (int)tm;
-						STAT_NSEC(&st, st_mtim) = (tm - (int)tm) * 1000000000;
-						tm            = SvNV(*(av_fetch(av2, 10, FALSE)));
-						st.st_ctime   = (int)tm;
-						STAT_NSEC(&st, st_ctim) = (tm - (int)tm) * 1000000000;
+						PULL_TIME(&st, st_atim, *(av_fetch(av2,  8, FALSE)));
+						PULL_TIME(&st, st_mtim, *(av_fetch(av2,  9, FALSE)));
+						PULL_TIME(&st, st_ctim, *(av_fetch(av2, 10, FALSE)));
 						st.st_blksize = SvIV(*(av_fetch(av2, 11, FALSE)));
 						st.st_blocks  = SvIV(*(av_fetch(av2, 12, FALSE)));
 						st_filled = 1;
@@ -1284,19 +1295,11 @@ int _PLfuse_fgetattr(const char *file, struct stat *result,
 		else
 			rv = -ENOENT;
 	} else {
-		double tm;
 		result->st_blocks = POPi;
 		result->st_blksize = POPi;
-		/* Do a little gymnastics to transform the fractional part into nsec */
-		tm = POPn;
-		result->st_ctime = (int)tm;
-		STAT_NSEC(result, st_ctim) = (tm - (int)tm) * 1000000000;
-		tm = POPn;
-		result->st_mtime = (int)tm;
-		STAT_NSEC(result, st_mtim) = (tm - (int)tm) * 1000000000;
-		tm = POPn;
-		result->st_atime = (int)tm;
-		STAT_NSEC(result, st_atim) = (tm - (int)tm) * 1000000000;
+		PULL_TIME(result, st_ctim, POPs);
+		PULL_TIME(result, st_mtim, POPs);
+		PULL_TIME(result, st_atim, POPs);
 		result->st_size = POPn;	// we pop double here to support files larger than 4Gb (long limit)
 		result->st_rdev = POPi;
 		result->st_gid = POPi;
