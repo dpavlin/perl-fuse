@@ -331,6 +331,14 @@ Here are the meaning of the fields:
 
 (The epoch was at 00:00 January 1, 1970 GMT.)
 
+If you wish to provide sub-second precision timestamps, they may be
+passed either as the fractional part of a floating-point value, or as a
+two-element array, passed as an array ref, with the first element
+containing the number of seconds since the epoch, and the second
+containing the number of nanoseconds. This provides complete time
+precision, as a floating point number starts losing precision at about
+a tenth of a microsecond. So if you really care about that sort of thing...
+
 =head3 readlink
 
 Arguments:  link pathname.
