@@ -74,7 +74,7 @@ chomp($libs .= `pkg-config --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd'
 # Needed for Fuse on OS X 10.6, due to 10.6 and up always using the 64-bit
 # inode structs; unfortunately MacFuse doesn't just do the right thing
 # on its own.
-if ($^O eq 'darwin' && (uname())[2] =~ /^10\./) {
+if ($^O eq 'darwin' && (uname())[2] =~ /^1[01]\./) {
     $libs =~ s/-lfuse/-lfuse_ino64/;
 }
 chomp(my $def = '-Wall -DFUSE_USE_VERSION=26 ' . `pkg-config --cflags-only-other fuse 2> /dev/null` || '-D_FILE_OFFSET_BITS=64');
