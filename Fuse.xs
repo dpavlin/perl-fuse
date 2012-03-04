@@ -86,6 +86,7 @@ typedef struct {
 #ifdef USE_ITHREADS
 	perl_mutex mutex;
 #endif
+	int utimens_as_array;
 } my_cxt_t;
 START_MY_CXT;
 
@@ -1397,8 +1398,30 @@ int _PLfuse_utimens(const char *file, const struct timespec tv[2]) {
 	SAVETMPS;
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
-	XPUSHs(tv ? sv_2mortal(newSVnv(tv[0].tv_sec + (tv[0].tv_nsec / 1000000000.0))) : &PL_sv_undef);
-	XPUSHs(tv ? sv_2mortal(newSVnv(tv[1].tv_sec + (tv[1].tv_nsec / 1000000000.0))) : &PL_sv_undef);
+	if (MY_CXT.utimens_as_array) {
+		/* Pushing timespecs as 2-element arrays (if tv is present). */
+		AV *av;
+		if (tv) {
+			av = newAV();
+			av_push(av, newSViv(tv[0].tv_sec));
+			av_push(av, newSViv(tv[0].tv_nsec));
+			XPUSHs(sv_2mortal(newRV_noinc((SV *)av)));
+			av = newAV();
+			av_push(av, newSViv(tv[1].tv_sec));
+			av_push(av, newSViv(tv[1].tv_nsec));
+			XPUSHs(sv_2mortal(newRV_noinc((SV *)av)));
+		}
+		else {
+			XPUSHs(&PL_sv_undef);
+			XPUSHs(&PL_sv_undef);
+		}
+
+	}
+	else {
+		/* Pushing timespecs as floating point (double) values. */
+		XPUSHs(tv ? sv_2mortal(newSVnv(tv[0].tv_sec + (tv[0].tv_nsec / 1000000000.0))) : &PL_sv_undef);
+		XPUSHs(tv ? sv_2mortal(newSVnv(tv[1].tv_sec + (tv[1].tv_nsec / 1000000000.0))) : &PL_sv_undef);
+	}
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[36],G_SCALAR);
 	SPAGAIN;
@@ -1706,7 +1729,7 @@ perl_fuse_main(...)
 	struct fuse_chan *fc;
 	dMY_CXT;
 	INIT:
-	if(items != N_CALLBACKS + 5) {
+	if(items != N_CALLBACKS + 6) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
 		XSRETURN_UNDEF;
 	}
@@ -1732,8 +1755,9 @@ perl_fuse_main(...)
 #if FUSE_VERSION >= 28
 	fops.flag_nullpath_ok = SvIV(ST(4));
 #endif /* FUSE_VERSION >= 28 */
+	MY_CXT.utimens_as_array = SvIV(ST(5));
 	for(i=0;i<N_CALLBACKS;i++) {
-		SV *var = ST(i+5);
+		SV *var = ST(i+6);
 		/* allow symbolic references, or real code references. */
 		if(SvOK(var) && (SvPOK(var) || (SvROK(var) && SvTYPE(SvRV(var)) == SVt_PVCV))) {
 			void **tmp1 = (void**)&_available_ops, **tmp2 = (void**)&fops;
@@ -1748,7 +1772,7 @@ perl_fuse_main(...)
 		} else if(SvOK(var)) {
 			croak("invalid callback (%i) passed to perl_fuse_main "
 			      "(%s is not a string, code ref, or undef).\n",
-			      i+5,SvPVbyte_nolen(var));
+			      i+6,SvPVbyte_nolen(var));
 		} else {
 			MY_CXT.callback[i] = NULL;
 		}

@@ -96,13 +96,14 @@ sub main {
 	my @subs = map {undef} @names;
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
-	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok);
+	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok utimens_as_array);
 	my %otherargs = (
-			  debug		=> 0,
-			  threaded	=> 0,
-			  mountpoint	=> "",
-			  mountopts	=> "",
-			  nullpath_ok	=> 0,
+			  debug			=> 0,
+			  threaded		=> 0,
+			  mountpoint		=> "",
+			  mountopts		=> "",
+			  nullpath_ok		=> 0,
+			  utimens_as_array	=> 0,
 			);
 	while(my $name = shift) {
 		my ($subref) = shift;
@@ -242,6 +243,14 @@ including read, write, flush, release, fsync, readdir, releasedir,
 fsyncdir, truncate, fgetattr and lock. If you use this, you must return
 file/directory handles from open, opendir and create. Default is 0 (off).
 Only effective on Fuse 2.8 and up; with earlier versions, this does nothing.
+
+=item utimens_as_array => boolean
+
+This flag causes timestamps passed via the utimens() call to be passed
+as arrays containing the time in seconds, and a second value containing
+the number of nanoseconds, instead of a floating point value. This allows
+for more precise times, as the normal floating point type used by Perl
+(double) loses accuracy starting at about tenths of a microsecond.
 
 =back
 
@@ -688,6 +697,10 @@ typically as "long double"), so the sub-second portion is represented as
 fractions of a second.
 
 Note that if this call is implemented, it overrides utime() ALWAYS.
+
+Also note that if you want times passed as arrays instead of floating point
+values, for higher precision, you should pass the C<utimens_as_array> option
+to C<Fuse::main>.
 
 =head3 bmap
 
