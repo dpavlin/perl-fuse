@@ -468,7 +468,7 @@ No creation, or truncation flags (O_CREAT, O_EXCL, O_TRUNC) will be passed to op
 The fileinfo hash reference contains flags from the Fuse open call which may be modified by the module. The only fields presently supported are:
  direct_io (version 2.4 onwards)
  keep_cache (version 2.4 onwards)
- nonseekable (version 2.9 onwards)
+ nonseekable (version 2.8 onwards)
 Your open() method needs only check if the operation is permitted for the given flags, and return 0 for success.
 Optionally a file handle may be returned, which will be passed to subsequent read, write, flush, fsync and release calls.
 
@@ -516,6 +516,7 @@ is closed. It may be called multiple times before a file is closed.
 =head3 release
 
 Arguments: Pathname, numeric flags passed to open, file handle
+
 Returns an errno or 0 on success.
 
 Called to indicate that there are no more references to the file. Called once
@@ -573,6 +574,8 @@ Returns a list: 0 or more text strings (the extended attribute names), followed 
 Arguments: Pathname, extended attribute's name
 
 Returns an errno or 0 on success.
+
+Removes the named extended attribute (if present) from a file.
 
 =head3 opendir
 
@@ -691,16 +694,14 @@ Arguments: Pathname, last accessed time, last modified time
 
 Returns errno or 0 on success
 
-Like utime(), but allows time resolution down to the nanosecond. Currently
-times are passed as "numeric" (internally I believe these are represented
-typically as "long double"), so the sub-second portion is represented as
-fractions of a second.
-
-Note that if this call is implemented, it overrides utime() ALWAYS.
-
-Also note that if you want times passed as arrays instead of floating point
+Like utime(), but allows time resolution down to the nanosecond. By default,
+times are passed as "numeric" (internally these are typically represented
+as "double"), so the sub-second portion is represented as fractions of a
+second. If you want times passed as arrays instead of floating point
 values, for higher precision, you should pass the C<utimens_as_array> option
 to C<Fuse::main>.
+
+Note that if this call is implemented, it overrides utime() ALWAYS.
 
 =head3 bmap
 
@@ -715,7 +716,7 @@ option passed.
 
 =head3 ioctl
 
-Arguments: Pathname, (signed) ioctl command code, flags, data if ioctl op is a write, (optional) file handle
+Arguments: Pathname, ioctl command code, flags, data if ioctl op is a write, (optional) file handle
 
 Returns errno or 0 on success, and data if ioctl op is a read
 
