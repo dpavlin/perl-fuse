@@ -55,7 +55,7 @@ unless ($fusever) {
         $explanation = 'Could not find librefuse? Maybe install "perfuse" from pkgsrc, or upgrade to newer NetBSD';
     }
     elsif ($^O eq 'darwin') {
-        $explanation = 'Please install MacFuse from http://code.google.com/p/macfuse/';
+        $explanation = 'Please install OSXFUSE from http://osxfuse.github.com/';
     }
     else {
         $explanation = 'There is no FUSE support for your platform to our knowledge, sorry';
@@ -73,7 +73,8 @@ chomp(my $libs = `pkg-config --libs-only-L fuse 2> /dev/null`);
 chomp($libs .= `pkg-config --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse'));
 # Needed for Fuse on OS X 10.6, due to 10.6 and up always using the 64-bit
 # inode structs; unfortunately MacFuse doesn't just do the right thing
-# on its own.
+# on its own. (Not applicable for OSXFUSE; it uses a new SONAME, so we
+# don't have to worry about conflicts/compatibility, it "just works".)
 if ($^O eq 'darwin' && (uname())[2] =~ /^1[01]\./) {
     $libs =~ s/-lfuse/-lfuse_ino64/;
 }
