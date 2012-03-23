@@ -66,14 +66,8 @@
 #define MY_CXT_KEY "Fuse::_guts" XS_VERSION
 #if FUSE_VERSION >= 28
 # define N_CALLBACKS 41
-#elif FUSE_VERSION >= 26
-# define N_CALLBACKS 38
-#elif FUSE_VERSION >= 25
-# define N_CALLBACKS 35
-#elif FUSE_VERSION >= 23
-# define N_CALLBACKS 31
 #else
-# define N_CALLBACKS 25
+# define N_CALLBACKS 38
 #endif
 
 typedef struct {
@@ -541,10 +535,8 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	 */
 	fi->fh = 0; /* Ensure it starts with 0 - important if they don't set it */
 	fihash = newHV();
-#if FUSE_VERSION >= 24
 	(void) hv_store(fihash, "direct_io",    9, newSViv(fi->direct_io),   0);
 	(void) hv_store(fihash, "keep_cache",  10, newSViv(fi->keep_cache),  0);
-#endif
 #if FUSE_VERSION >= 28
 	(void) hv_store(fihash, "nonseekable", 11, newSViv(fi->nonseekable), 0);
 #endif
@@ -566,13 +558,11 @@ int _PLfuse_open (const char *file, struct fuse_file_info *fi) {
 	if (rv == 0)
 	{
 		/* Success, so copy the file handle which they returned */
-#if FUSE_VERSION >= 24
 		SV **svp;
 		if ((svp = hv_fetch(fihash, "direct_io",    9, 0)) != NULL)
 			fi->direct_io   = SvIV(*svp);
 		if ((svp = hv_fetch(fihash, "keep_cache",  10, 0)) != NULL)
 			fi->keep_cache  = SvIV(*svp);
-#endif
 #if FUSE_VERSION >= 28
 		if ((svp = hv_fetch(fihash, "nonseekable", 11, 0)) != NULL)
  			fi->nonseekable = SvIV(*svp);
@@ -942,7 +932,6 @@ int _PLfuse_removexattr (const char *file, const char *name) {
 	return rv;
 }
 
-#if FUSE_VERSION >= 23
 int _PLfuse_opendir(const char *file, struct fuse_file_info *fi) {
 	int rv;
 	FUSE_CONTEXT_PRE;
@@ -1112,11 +1101,7 @@ int _PLfuse_fsyncdir(const char *file, int datasync,
 	return rv;
 }
 
-#if FUSE_VERSION >= 26
 void *_PLfuse_init(struct fuse_conn_info *fc)
-#else /* FUSE_VERSION < 26 */
-void *_PLfuse_init(void)
-#endif /* FUSE_VERSION >= 26 */
 {
 	void *rv = NULL;
 	int prv;
@@ -1161,9 +1146,7 @@ void _PLfuse_destroy(void *private_data) {
 	DEBUGf("init end\n");
 	FUSE_CONTEXT_POST;
 }
-#endif /* FUSE_VERSION >= 23 */
 
-#if FUSE_VERSION >= 25
 int _PLfuse_access(const char *file, int mask) {
 	int rv;
 	FUSE_CONTEXT_PRE;
@@ -1318,9 +1301,7 @@ int _PLfuse_fgetattr(const char *file, struct stat *result,
 	FUSE_CONTEXT_POST;
 	return rv;
 }
-#endif /* FUSE_VERSION >= 25 */
 
-#if FUSE_VERSION >= 26
 int _PLfuse_lock(const char *file, struct fuse_file_info *fi, int cmd,
                  struct flock *lockinfo) {
 	int rv;
@@ -1473,7 +1454,6 @@ int _PLfuse_bmap(const char *file, size_t blocksize, uint64_t *idx) {
 	FUSE_CONTEXT_POST;
 	return rv;
 }
-#endif /* FUSE_VERSION >= 26 */
 
 #if FUSE_VERSION >= 28
 int _PLfuse_ioctl(const char *file, int cmd, void *arg,
@@ -1598,25 +1578,19 @@ setxattr:		_PLfuse_setxattr,
 getxattr:		_PLfuse_getxattr,
 listxattr:		_PLfuse_listxattr,
 removexattr:		_PLfuse_removexattr,
-#if FUSE_VERSION >= 23
 opendir:		_PLfuse_opendir, 
 readdir:		_PLfuse_readdir,
 releasedir:		_PLfuse_releasedir,
 fsyncdir:		_PLfuse_fsyncdir,
 init:			_PLfuse_init,
 destroy:		_PLfuse_destroy,
-#endif /* FUSE_VERSION >= 23 */
-#if FUSE_VERSION >= 25
 access:			_PLfuse_access,
 create:			_PLfuse_create,
 ftruncate:		_PLfuse_ftruncate,
 fgetattr:		_PLfuse_fgetattr,
-#endif /* FUSE_VERSION >= 25 */
-#if FUSE_VERSION >= 26
 lock:			_PLfuse_lock,
 utimens:		_PLfuse_utimens,
 bmap:			_PLfuse_bmap,
-#endif /* FUSE_VERSION >= 26 */
 #if FUSE_VERSION >= 28
 ioctl:			_PLfuse_ioctl,
 poll:			_PLfuse_poll,
