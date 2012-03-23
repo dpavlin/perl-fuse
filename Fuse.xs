@@ -5,7 +5,7 @@
 
 #include <fuse.h>
 
-#if (defined(__FreeBSD__) && __FreeBSD__ < 10) || defined(__NetBSD__)
+#if (defined(__FreeBSD__) && !defined(__APPLE__)) || defined(__NetBSD__)
 # define XATTR_CREATE 1
 # define XATTR_REPLACE 2
 #else
@@ -773,7 +773,7 @@ int _PLfuse_fsync (const char *file, int datasync, struct fuse_file_info *fi) {
 	return rv;
 }
 
-#if __FreeBSD__ >= 10
+#ifdef __APPLE__
 int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_t buflen, int flags, uint32_t position) {
 #else
 int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_t buflen, int flags) {
@@ -800,7 +800,7 @@ int _PLfuse_setxattr (const char *file, const char *name, const char *buf, size_
 	return rv;
 }
 
-#if __FreeBSD__ >= 10
+#ifdef __APPLE__
 int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t buflen, uint32_t position) {
 #else
 int _PLfuse_getxattr (const char *file, const char *name, char *buf, size_t buflen) {
