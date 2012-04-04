@@ -1456,6 +1456,11 @@ int _PLfuse_bmap(const char *file, size_t blocksize, uint64_t *idx) {
 }
 
 #if FUSE_VERSION >= 28
+
+# ifndef __linux__
+#  define _IOC_SIZE(n) IOCPARM_LEN(n)
+# endif
+
 int _PLfuse_ioctl(const char *file, int cmd, void *arg,
                   struct fuse_file_info *fi, unsigned int flags, void *data) {
 	int rv;
@@ -1471,7 +1476,7 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	 * the perl side */
 	XPUSHs(sv_2mortal(newSVuv((unsigned int)cmd)));
 	XPUSHs(sv_2mortal(newSViv(flags)));
-	if (_IOC_DIR(cmd) & _IOC_WRITE)
+	if (cmd & IOC_IN)
 		XPUSHs(sv_2mortal(newSVpvn(data, _IOC_SIZE(cmd))));
 	else
 		XPUSHs(&PL_sv_undef);
@@ -1479,7 +1484,7 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[39],G_ARRAY);
 	SPAGAIN;
-	if ((_IOC_DIR(cmd) & _IOC_READ) && (rv == 2)) {
+	if ((cmd & IOC_OUT) && (rv == 2)) {
 		sv = POPs;
 		rv--;
 	}
@@ -1487,7 +1492,7 @@ int _PLfuse_ioctl(const char *file, int cmd, void *arg,
 	if (rv > 0)
 		rv = POPi;
 
-	if ((_IOC_DIR(cmd) & _IOC_READ) && !rv) {
+	if ((cmd & IOC_OUT) && !rv) {
 		if (sv) {
 			size_t len;
 			char *rdata = SvPV(sv, len);
