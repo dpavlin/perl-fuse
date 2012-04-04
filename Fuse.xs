@@ -1794,27 +1794,27 @@ pollhandle_destroy(...)
     PREINIT:
 	struct fuse_pollhandle *ph;
     INIT:
-        if (items != 1) {
-            fprintf(stderr, "No pollhandle passed?\n");
-            XSRETURN_UNDEF;
-        }
-	CODE:
-        ph = INT2PTR(struct fuse_pollhandle*, SvIV(ST(0)));
-		fuse_pollhandle_destroy(ph);
+	if (items != 1) {
+		fprintf(stderr, "No pollhandle passed?\n");
+		XSRETURN_UNDEF;
+	}
+    CODE:
+	ph = INT2PTR(struct fuse_pollhandle*, SvIV(ST(0)));
+	fuse_pollhandle_destroy(ph);
 
 int 
 notify_poll(...)
     PREINIT:
-        struct fuse_pollhandle *ph;
+	struct fuse_pollhandle *ph;
     INIT:
-        if (items != 1) {
-            fprintf(stderr, "No pollhandle passed?\n");
-            XSRETURN_UNDEF;
-        }
-	CODE:
-        ph = INT2PTR(struct fuse_pollhandle*, SvIV(ST(0)));
-		RETVAL = fuse_notify_poll(ph);
-	OUTPUT:
-		RETVAL
+	if (items != 1) {
+		fprintf(stderr, "No pollhandle passed?\n");
+		XSRETURN_UNDEF;
+	}
+    CODE:
+	ph = INT2PTR(struct fuse_pollhandle*, SvIV(ST(0)));
+	RETVAL = fuse_notify_poll(ph);
+    OUTPUT:
+	RETVAL
 
 #endif
