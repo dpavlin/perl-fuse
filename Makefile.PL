@@ -76,7 +76,7 @@ chomp($libs .= `pkg-config --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd'
 # on its own. (Not applicable for OSXFUSE; it uses a new SONAME, so we
 # don't have to worry about conflicts/compatibility, it "just works".)
 if ($^O eq 'darwin' && (uname())[2] =~ /^1[01]\./) {
-    $libs =~ s/-lfuse/-lfuse_ino64/;
+    $libs =~ s/-lfuse\b/-lfuse_ino64/;
 }
 chomp(my $def = '-Wall -DFUSE_USE_VERSION=26 ' . `pkg-config --cflags-only-other fuse 2> /dev/null` || '-D_FILE_OFFSET_BITS=64');
 chomp($def .= `pkg-config --libs-only-other fuse 2> /dev/null`);
