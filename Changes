@@ -102,3 +102,6 @@ Revision history for Perl extension Fuse.
 	  from FUSE.
 	- Fixed a thinko in the platform handling chain in Makefile.PL.
 	- Added handling for sub-second [amc]time stamps.
+	- Improve compatibility with Fuse4X.
+	- Improve future compatibility with non-Linux FUSE 2.8
+	  implementations.
