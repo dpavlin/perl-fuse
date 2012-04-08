@@ -13,7 +13,12 @@ use Fcntl qw(:mode);
 use Errno qw(:POSIX);
 use POSIX;
 
-require 'asm/ioctl.ph';
+if ($^O eq 'linux') {
+    require 'linux/ioctl.ph';
+}
+else {
+    require 'sys/ioccom.ph';
+}
 
 our %sizeof = ('size_t' => length(pack('L!')));
 sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'size_t'); }

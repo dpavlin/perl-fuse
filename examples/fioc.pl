@@ -27,7 +27,12 @@ use constant FIOC_NONE  => 0;
 use constant FIOC_ROOT  => 1;
 use constant FIOC_FILE  => 2;
 
-require 'asm/ioctl.ph';
+if ($^O eq 'linux') {
+    require 'linux/ioctl.ph';
+}
+else {
+    require 'sys/ioccom.ph';
+}
 
 our %sizeof = ('size_t' => length(pack('L!')));
 sub FIOC_GET_SIZE { _IOR(ord 'E', 0, 'size_t'); }
