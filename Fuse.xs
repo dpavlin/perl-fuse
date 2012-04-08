@@ -13,8 +13,10 @@
 #endif
 
 #if defined(__linux__)
+# define STAT_SEC(st, st_xtim) ((st)->st_xtim.tv_sec)
 # define STAT_NSEC(st, st_xtim) ((st)->st_xtim.tv_nsec)
 #else
+# define STAT_SEC(st, st_xtim) ((st)->st_xtim##espec.tv_sec)
 # define STAT_NSEC(st, st_xtim) ((st)->st_xtim##espec.tv_nsec)
 #endif
 
@@ -31,12 +33,12 @@
 		if (av_len(av) != 1) {					\
 			Perl_croak_nocontext("Array of incorrect dimension"); \
 		}							\
-		(st)->st_xtim##e = SvIV(*(av_fetch(av, 0, FALSE)));	\
+		STAT_SEC(st, st_xtim) = SvIV(*(av_fetch(av, 0, FALSE))); \
 		STAT_NSEC(st, st_xtim) = SvIV(*(av_fetch(av, 1, FALSE))); \
 	}								\
 	else if (SvNOK(sv) || SvIOK(sv)) {				\
 		double tm = SvNV(sv);					\
-		(st)->st_xtim##e = (int)tm;				\
+		STAT_SEC(st, st_xtim) = (int)tm;			\
 		STAT_NSEC(st, st_xtim) = (tm - (int)tm) * 1000000000;	\
 	}								\
 	else {								\
@@ -318,7 +320,6 @@ int _PLfuse_mkdir (const char *file, mode_t mode) {
 	FUSE_CONTEXT_POST;
 	return rv;
 }
-
 
 int _PLfuse_unlink (const char *file) {
 	int rv;
@@ -957,7 +958,6 @@ int _PLfuse_opendir(const char *file, struct fuse_file_info *fi) {
 	DEBUGf("opendir end: %i\n",rv);
 	FUSE_CONTEXT_POST;
 	return rv;
-
 }
 
 int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
@@ -1009,8 +1009,8 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 					 * enumeration process... */
 					svp = av_fetch(av, 2, FALSE);
 					if (SvROK(*svp) &&
-							SvTYPE(av2 = (AV *)SvRV(*svp)) == SVt_PVAV &&
-							av_len(av2) == 12) {
+					    SvTYPE(av2 = (AV *)SvRV(*svp)) == SVt_PVAV &&
+					    av_len(av2) == 12) {
 						st.st_dev     = SvIV(*(av_fetch(av2,  0, FALSE)));
 						st.st_ino     = SvIV(*(av_fetch(av2,  1, FALSE)));
 						st.st_mode    = SvIV(*(av_fetch(av2,  2, FALSE)));
@@ -1530,9 +1530,9 @@ int _PLfuse_poll(const char *file, struct fuse_file_info *fi,
 	PUSHMARK(SP);
 	XPUSHs(sv_2mortal(newSVpv(file,0)));
 	if (ph) {
-        /* Still gotta figure out how to do this right... */
+		/* Still gotta figure out how to do this right... */
 		sv = newSViv(PTR2IV(ph));
-        SvREADONLY_on(sv);
+		SvREADONLY_on(sv);
 		SvSHARE(sv);
 		XPUSHs(sv);
 	}
@@ -1545,8 +1545,8 @@ int _PLfuse_poll(const char *file, struct fuse_file_info *fi,
 	SPAGAIN;
 	if (rv > 1) {
 		*reventsp = POPi;
-        rv--;
-    }
+		rv--;
+	}
 	rv = (rv ? POPi : 0);
 	FREETMPS;
 	LEAVE;
