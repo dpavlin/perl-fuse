@@ -72,17 +72,10 @@ use constant FUSE_IOCTL_MAX_IOV		=> 256;
 sub main {
 	my @names = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
 			rename link chmod chown truncate utime open read write statfs
-			flush release fsync setxattr getxattr listxattr removexattr);
+			flush release fsync setxattr getxattr listxattr removexattr
+			opendir readdir releasedir fsyncdir init destroy access
+			create ftruncate fgetattr lock utimens bmap);
 	my $fuse_version = fuse_version();
-	if ($fuse_version >= 2.3) {
-		push(@names, qw/opendir readdir releasedir fsyncdir init destroy/);
-	}
-	if ($fuse_version >= 2.5) {
-		push(@names, qw/access create ftruncate fgetattr/);
-	}
-	if ($fuse_version >= 2.6) {
-		push(@names, qw/lock utimens bmap/);
-	}
 	if ($fuse_version >= 2.8) {
 		# junk doesn't contain a function pointer, and hopefully
 		# never will; it's a "dead" zone in the struct
