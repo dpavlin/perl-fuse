@@ -1,5 +1,6 @@
 #!/usr/bin/perl
-package test::helper;
+package # avoid cpan indexing
+	test::helper;
 use strict;
 use Exporter;
 use Config;
