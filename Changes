@@ -105,3 +105,7 @@ Revision history for Perl extension Fuse.
 	- Improve compatibility with Fuse4X.
 	- Improve future compatibility with non-Linux FUSE 2.8
 	  implementations.
+
+0.15.1
+	- Reissuing release after workaround for "test::helper" ownership
+	  conflict, added by Dobrica.
