@@ -741,6 +741,33 @@ FUSE, so POLLPRI/POLLRDBAND/POLLWRBAND won't work.
 Poll handle is currently a read-only scalar; we are investigating a way
 to make this an object instead.
 
+=head1 EXAMPLES
+
+There are a few example scripts in the examples/ subdirectory.  These are:
+
+example.pl
+
+	A simple "Hello world" type of script
+
+loopback.pl
+
+	A filesystem loopback-device.  like fusexmp from the main FUSE dist,
+	it simply recurses file operations into the real filesystem.  Unlike
+	fusexmp, it only re-shares files under the /tmp/test directory.
+
+rmount.pl
+
+	An NFS-workalike which tunnels through SSH. It requires an account
+	on some ssh server (obviously), with public-key authentication enabled.
+	(if you have to type in a password, you don't have this. man ssh_keygen.).
+	Copy rmount_remote.pl to your home directory on the remote machine
+	and make it executable. Then create a mountpoint subdir somewhere local,
+	and run the example script: ./rmount.pl host /remote/dir /local/dir
+
+rmount_remote.pl
+
+	A ripoff of loopback.pl meant to be used as a backend for rmount.pl.
+
 =head1 AUTHOR
 
 Mark Glines, E<lt>mark@glines.orgE<gt>
