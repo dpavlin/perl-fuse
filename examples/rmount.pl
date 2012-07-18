@@ -7,14 +7,15 @@ use IPC::Open2;
 use Fuse;
 use Data::Dumper;
 
+my $port; if($ARGV[-1]=~/^--/){ $port = pop(@ARGV); $port =~ s/--port=//; }
 my ($host, $dir, $mount) = @ARGV;
 if(!defined($mount)) {
 	$mount = $dir;
 	if($host =~ /^(.*):(.*)$/) {
 		($host,$dir) = ($1,$2);
 	} else {
-		die "usage: $0 user\@host remotedir mountpoint\n".
-		    "or   : $0 user\@host:remotedir mountpoint\n";
+		die "usage: $0 user\@host remotedir mountpoint [--port=<port>]\n".
+		    "or   : $0 user\@host:remotedir mountpoint [--port=<port>]\n";
 	}
 }
 
@@ -29,6 +30,7 @@ map { my ($str) = $_; $args{$str} = sub { netlink($str,@_) } }
 	   rmdir mknod statfs);
 
 sub connect_remote {
+	push(@Net::SSH::ssh_options, "-p $port") if $port;
 	sshopen2($host, *READER, *WRITER, "./rmount_remote.pl $dir")
 		or die "ssh: $!\n";
 	select WRITER;
