@@ -36,7 +36,7 @@
 		STAT_SEC(st, st_xtim) = SvIV(*(av_fetch(av, 0, FALSE))); \
 		STAT_NSEC(st, st_xtim) = SvIV(*(av_fetch(av, 1, FALSE))); \
 	}								\
-	else if (SvNOK(sv) || SvIOK(sv)) {				\
+	else if (SvNOK(sv) || SvIOK(sv) || SvPOK(sv)) {			\
 		double tm = SvNV(sv);					\
 		STAT_SEC(st, st_xtim) = (int)tm;			\
 		STAT_NSEC(st, st_xtim) = (tm - (int)tm) * 1000000000;	\
