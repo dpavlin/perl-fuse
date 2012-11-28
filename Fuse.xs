@@ -112,9 +112,9 @@ tTHX S_clone_interp(tTHX parent) {
 		PERL_SET_CONTEXT(parent);
 		dTHX;
 #if (PERL_VERSION > 10) || (PERL_VERSION == 10 && PERL_SUBVERSION >= 1)
-		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST | CLONEf_COPY_STACKS);
+		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST);
 #else
-		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST | CLONEf_COPY_STACKS | CLONEf_KEEP_PTR_TABLE);
+		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST | CLONEf_KEEP_PTR_TABLE);
 		ptr_table_free(PL_ptr_table);
 		PL_ptr_table = NULL;
 #endif
