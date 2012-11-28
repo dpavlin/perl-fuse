@@ -1935,10 +1935,9 @@ CLONE(...)
 			clone_param = &raw_param;
 #endif
 			for(i=0;i<N_CALLBACKS;i++) {
-				MY_CXT.callback[i] = sv_dup(MY_CXT.callback[i], clone_param);
-				SvREFCNT_inc(MY_CXT.callback[i]);
+				MY_CXT.callback[i] = SvREFCNT_inc(sv_dup(MY_CXT.callback[i], clone_param));
 			}
-			MY_CXT.handles = (HV*)sv_dup((SV*)MY_CXT.handles, clone_param);
+			MY_CXT.handles = (HV*)SvREFCNT_inc(sv_dup((SV*)MY_CXT.handles, clone_param));
 #if (PERL_VERSION > 13) || (PERL_VERSION == 13 && PERL_SUBVERSION >= 2)
 			Perl_clone_params_del(clone_param);
 #endif
@@ -2284,6 +2283,7 @@ perl_fuse_main(...)
 		if (MY_CXT.callback[i] != NULL) {
 			SvREFCNT_dec(MY_CXT.callback[i]);
 		}
+		MY_CXT.callback[i] = NULL;
 	}
 
 #if FUSE_VERSION >= 28
