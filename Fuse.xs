@@ -681,8 +681,8 @@ int _PLfuse_statfs (const char *file, struct statvfs *st) {
 		st->f_namemax	= POPi;
 		/* zero and fill-in other */
 		st->f_fsid = 0;
-		st->f_frsize = 4096;
 		st->f_flag = 0;
+		st->f_frsize = st->f_bsize;
 		st->f_bavail = st->f_bfree;
 		st->f_favail = st->f_ffree;
 
