@@ -111,13 +111,14 @@ tTHX S_clone_interp(tTHX parent) {
 		MUTEX_LOCK(&MY_CXT.mutex);
 		PERL_SET_CONTEXT(parent);
 		dTHX;
-#if (PERL_VERSION > 10) || (PERL_VERSION == 10 && PERL_SUBVERSION >= 1)
-		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST);
-#else
+# if (PERL_VERSION < 10) || (PERL_VERSION == 10 && PERL_SUBVERSION < 1)
+		// perl pre-5.10.1 didn't retain the pointer table long enough for CLONE functions to work correctly (see commit b0b93b3 in perl-core)
 		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST | CLONEf_KEEP_PTR_TABLE);
 		ptr_table_free(PL_ptr_table);
 		PL_ptr_table = NULL;
-#endif
+# else
+		tTHX child = perl_clone(parent, CLONEf_CLONE_HOST);
+# endif
 		MUTEX_UNLOCK(&MY_CXT.mutex);
 		return child;
 	}
