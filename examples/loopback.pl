@@ -24,13 +24,20 @@ eval {
     Filesys::Statvfs->import();
 };
 
+my $use_lchown = 0;
+eval {
+    require Lchown;
+	1;
+} and do {
+	$use_lchown = 1;
+};
+
 use blib;
 use Fuse;
 use IO::File;
 use POSIX qw(ENOTDIR ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT setsid);
 use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET S_ISREG S_ISFIFO S_IMODE S_ISCHR S_ISBLK S_ISSOCK);
 use Getopt::Long;
-use Lchown;
 use Unix::Mknod qw(:all);
 
 my %extraopts = ( 'threaded' => 0, 'debug' => 0 );
@@ -121,7 +128,11 @@ sub x_chown {
     local $!;
     print "nonexistent $fn\n" unless -e $fn;
     my ($uid,$gid) = @_;
-    lchown($uid, $gid, $fn);
+    if( $use_lchown ){
+		lchown($uid, $gid, $fn);
+	}else{
+		chown($uid, $gid, $fn);
+	}
     return -$!;
 }
 sub x_chmod {
