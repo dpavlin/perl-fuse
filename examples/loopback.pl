@@ -206,7 +206,17 @@ sub daemonize {
 }
 
 my ($mountpoint) = '';
-$mountpoint = shift(@ARGV) if @ARGV;
+if(@ARGV){
+        $mountpoint = shift(@ARGV)
+}else{
+        print "\n Usage: loopback.pl <mountpoint> [options]
+        \n Options:
+ --debug                Turn on debugging (verbose) output
+ --use-threads          Use threads
+ --use-real-statfs      Use real stat command against /tmp or generic values
+ --pidfile              Set pidfile value --pidfile=<numeric-value>\n\n";
+        exit;
+}
 
 if (! -d $mountpoint) {
     print STDERR "ERROR: attempted to mount to non-directory\n";
