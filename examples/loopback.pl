@@ -32,13 +32,20 @@ eval {
 	$use_lchown = 1;
 };
 
+my $has_mknod = 0;
+eval {
+        require Unix::Mknod;
+        1;
+} and do {
+        $has_mknod = 1;
+};
+
 use blib;
 use Fuse;
 use IO::File;
 use POSIX qw(ENOTDIR ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT setsid);
 use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET S_ISREG S_ISFIFO S_IMODE S_ISCHR S_ISBLK S_ISSOCK);
 use Getopt::Long;
-use Unix::Mknod qw(:all);
 
 my %extraopts = ( 'threaded' => 0, 'debug' => 0 );
 my($use_real_statfs, $pidfile);
@@ -165,8 +172,12 @@ sub x_mknod {
         return $rv ? 0 : -POSIX::errno();
     }
     elsif (S_ISCHR($modes) || S_ISBLK($modes)) {
-        mknod($file, $modes, $dev);
-        return -$!;
+        if($has_mknod){
+                Unix::Mknod::mknod($file, $modes, $dev);
+                return -$!;
+        }else{
+                return -POSIX::errno();
+        }
     }
     # S_ISSOCK maybe should be handled; however, for our test it should
     # not really matter.
