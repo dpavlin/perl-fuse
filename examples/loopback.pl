@@ -24,14 +24,28 @@ eval {
     Filesys::Statvfs->import();
 };
 
+my $use_lchown = 0;
+eval {
+    require Lchown;
+	1;
+} and do {
+	$use_lchown = 1;
+};
+
+my $has_mknod = 0;
+eval {
+        require Unix::Mknod;
+        1;
+} and do {
+        $has_mknod = 1;
+};
+
 use blib;
 use Fuse;
 use IO::File;
-use POSIX qw(ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT setsid);
+use POSIX qw(ENOTDIR ENOENT ENOSYS EEXIST EPERM O_RDONLY O_RDWR O_APPEND O_CREAT setsid);
 use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET S_ISREG S_ISFIFO S_IMODE S_ISCHR S_ISBLK S_ISSOCK);
 use Getopt::Long;
-use Lchown;
-use Unix::Mknod qw(:all);
 
 my %extraopts = ( 'threaded' => 0, 'debug' => 0 );
 my($use_real_statfs, $pidfile);
@@ -121,7 +135,11 @@ sub x_chown {
     local $!;
     print "nonexistent $fn\n" unless -e $fn;
     my ($uid,$gid) = @_;
-    lchown($uid, $gid, $fn);
+    if( $use_lchown ){
+		lchown($uid, $gid, $fn);
+	}else{
+		chown($uid, $gid, $fn);
+	}
     return -$!;
 }
 sub x_chmod {
@@ -154,8 +172,12 @@ sub x_mknod {
         return $rv ? 0 : -POSIX::errno();
     }
     elsif (S_ISCHR($modes) || S_ISBLK($modes)) {
-        mknod($file, $modes, $dev);
-        return -$!;
+        if($has_mknod){
+                Unix::Mknod::mknod($file, $modes, $dev);
+                return -$!;
+        }else{
+                return -POSIX::errno();
+        }
     }
     # S_ISSOCK maybe should be handled; however, for our test it should
     # not really matter.
@@ -195,7 +217,17 @@ sub daemonize {
 }
 
 my ($mountpoint) = '';
-$mountpoint = shift(@ARGV) if @ARGV;
+if(@ARGV){
+        $mountpoint = shift(@ARGV)
+}else{
+        print "\n Usage: loopback.pl <mountpoint> [options]
+        \n Options:
+ --debug                Turn on debugging (verbose) output
+ --use-threads          Use threads
+ --use-real-statfs      Use real stat command against /tmp or generic values
+ --pidfile              Set pidfile value --pidfile=<numeric-value>\n\n";
+        exit;
+}
 
 if (! -d $mountpoint) {
     print STDERR "ERROR: attempted to mount to non-directory\n";

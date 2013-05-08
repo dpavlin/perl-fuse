@@ -40,8 +40,6 @@ sub filename_fixup {
 
 sub e_getattr {
 	my ($file) = filename_fixup(shift);
-	$file =~ s,^/,,;
-	$file = '.' unless length($file);
 	return -ENOENT() unless exists($files{$file});
 	my ($size) = exists($files{$file}{cont}) ? length($files{$file}{cont}) : 0;
 	$size = $files{$file}{size} if exists $files{$file}{size};
