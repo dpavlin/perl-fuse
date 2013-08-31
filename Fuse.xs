@@ -266,6 +266,7 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 		 * reverse the order of this array would be confusing, at best. */
 		while (swp <= &TOPs)
 			dirfil(dirh,SvPVx_nolen(*(swp++)),0,0);
+                SP -= prv - 1;
 	} else {
 		fprintf(stderr,"getdir() handler returned nothing!\n");
 		rv = -ENOSYS;
@@ -1044,6 +1045,7 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 			else
 				fprintf(stderr, "ERROR: Unknown entry passed via readdir\n");
 		}
+                SP -= prv - 1;
 	} else {
 		fprintf(stderr,"readdir() handler returned nothing!\n");
 		rv = -ENOSYS;
@@ -1679,21 +1681,21 @@ fuse_get_context()
 SV *
 fuse_version()
 	CODE:
-	RETVAL = newSVpvf("%d.%d", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
+	RETVAL = sv_2mortal(newSVpvf("%d.%d", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION));
 	OUTPUT:
 	RETVAL
 
 SV *
 XATTR_CREATE()
 	CODE:
-	RETVAL = newSViv(XATTR_CREATE);
+	RETVAL = sv_2mortal(newSViv(XATTR_CREATE));
 	OUTPUT:
 	RETVAL
 
 SV *
 XATTR_REPLACE()
 	CODE:
-	RETVAL = newSViv(XATTR_REPLACE);
+	RETVAL = sv_2mortal(newSViv(XATTR_REPLACE));
 	OUTPUT:
 	RETVAL
 
