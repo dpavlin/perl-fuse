@@ -1681,21 +1681,21 @@ fuse_get_context()
 SV *
 fuse_version()
 	CODE:
-	RETVAL = sv_2mortal(newSVpvf("%d.%d", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION));
+	RETVAL = newSVpvf("%d.%d", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
 	OUTPUT:
 	RETVAL
 
 SV *
 XATTR_CREATE()
 	CODE:
-	RETVAL = sv_2mortal(newSViv(XATTR_CREATE));
+	RETVAL = newSViv(XATTR_CREATE);
 	OUTPUT:
 	RETVAL
 
 SV *
 XATTR_REPLACE()
 	CODE:
-	RETVAL = sv_2mortal(newSViv(XATTR_REPLACE));
+	RETVAL = newSViv(XATTR_REPLACE);
 	OUTPUT:
 	RETVAL
 
