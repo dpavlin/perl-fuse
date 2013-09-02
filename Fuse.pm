@@ -75,8 +75,10 @@ sub main {
 			flush release fsync setxattr getxattr listxattr removexattr
 			opendir readdir releasedir fsyncdir init destroy access
 			create ftruncate fgetattr lock utimens bmap);
-	my $fuse_version = fuse_version();
-	if ($fuse_version >= 2.8) {
+	my ($fuse_vmajor, $fuse_vminor, $fuse_vmicro) = fuse_version();
+	my $fuse_version = $fuse_vmajor + ($fuse_vminor * 1.0 / 1_000) +
+		($fuse_vmicro * 1.0 / 1_000_000);
+	if ($fuse_version >= 2.008) {
 		# junk doesn't contain a function pointer, and hopefully
 		# never will; it's a "dead" zone in the struct
 		# fuse_operations where a flag bit is declared. we don't
@@ -86,10 +88,16 @@ sub main {
 		# the last 2 wrapper functions no big thing.
 		push(@names, qw/junk ioctl poll/);
 	}
+	if ($fuse_version >= 2.009) {
+		push(@names, qw/write_buf read_buf flock/);
+	}
+	if ($fuse_version >= 2.009001) {
+		push(@names, qw/fallocate/);
+	}
 	my @subs = map {undef} @names;
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
-	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok utimens_as_array);
+	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok utimens_as_array nopath utime_omit_ok);
 	my %otherargs = (
 			  debug			=> 0,
 			  threaded		=> 0,
@@ -97,6 +105,8 @@ sub main {
 			  mountopts		=> "",
 			  nullpath_ok		=> 0,
 			  utimens_as_array	=> 0,
+			  nopath		=> 0,
+			  utime_omit_ok		=> 0,
 			);
 	while(my $name = shift) {
 		my ($subref) = shift;
@@ -508,7 +518,7 @@ is closed. It may be called multiple times before a file is closed.
 
 =head3 release
 
-Arguments: Pathname, numeric flags passed to open, file handle
+Arguments: Pathname, numeric flags passed to open, file handle, flock_release flag (when built against FUSE 2.9 or later), lock owner ID (when built against FUSE 2.9 or later)
 
 Returns an errno or 0 on success.
 
@@ -740,6 +750,42 @@ FUSE, so POLLPRI/POLLRDBAND/POLLWRBAND won't work.
 
 Poll handle is currently a read-only scalar; we are investigating a way
 to make this an object instead.
+
+=head3 write_buf
+
+NOT YET IMPLEMENTED
+
+=head3 read_buf
+
+NOT YET IMPLEMENTED
+
+=head3 flock
+
+Arguments: pathname, (optional) file handle, unique lock owner ID, operation ID
+
+Perform BSD-style file locking operations.
+
+Operation ID will be one of LOCK_SH, LOCK_EX or LOCK_UN. Non-blocking lock
+requests will be indicated by having LOCK_NB OR'd into the value.
+
+For more information, see the flock(2) manpage. For the lock symbols, do:
+
+  use Fcntl qw(flock);
+
+Locking is handled locally, but this allows (especially for networked file
+systems) for protocol-level locking semantics to also be employed, if any
+are available.
+
+=head3 fallocate
+
+Arguments: pathname, (optional) file handle, mode, offset, length
+
+Allocates space for an open file.
+
+This function ensures that required space is allocated for specified file.
+If this function returns success then any subsequent write request to
+specified range is guaranteed not to fail because of lack of space on
+the file system media.
 
 =head1 EXAMPLES
 

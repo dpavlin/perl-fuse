@@ -109,3 +109,4 @@ Revision history for Perl extension Fuse.
 0.16
 	- Fixed unbounded stack growth due to previous changes in getdir()
 	  and readdir() wrappers that didn't properly decrement SP.
+	- Implement support for FUSE 2.9 specific operations.

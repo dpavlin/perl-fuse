@@ -66,11 +66,18 @@
 /* Global Data */
 
 #define MY_CXT_KEY "Fuse::_guts" XS_VERSION
-#if FUSE_VERSION >= 28
+#if FUSE_VERSION >= 29
+# if FUSE_FOUND_MICRO_VER >= 1
+#  define N_CALLBACKS 45
+# else /* FUSE_FOUND_MICRO_VER < 1 */
+#  define N_CALLBACKS 44
+# endif
+#elif FUSE_VERSION >= 28
 # define N_CALLBACKS 41
-#else
+#else /* FUSE_VERSION < 28 */
 # define N_CALLBACKS 38
 #endif
+#define N_FLAGS 8
 
 typedef struct {
 	SV *callback[N_CALLBACKS];
@@ -739,6 +746,16 @@ int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
 	XPUSHs(sv_2mortal(newSViv(flags)));
 	XPUSHs(FH_GETHANDLE(fi));
+#if FUSE_VERSION >= 29
+	XPUSHs(fi->flock_release ? sv_2mortal(newSViv(1)) : &PL_sv_undef);
+# ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(fi->lock_owner)));
+# else
+	if (asprintf(&temp, "%llu", fi->lock_owner) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+# endif
+#endif
 	PUTBACK;
 	rv = call_sv(MY_CXT.callback[19],G_SCALAR);
 	SPAGAIN;
@@ -1559,6 +1576,96 @@ int _PLfuse_poll(const char *file, struct fuse_file_info *fi,
 }
 #endif /* FUSE_VERSION >= 28 */
 
+#if FUSE_VERSION >= 29
+int _PLfuse_write_buf (const char *file, struct fuse_bufvec *buf, off_t off,
+                       struct fuse_file_info *fi) {
+	croak("write_buf(): NOT IMPLEMENTED, DO NOT USE YET!");
+}
+
+int _PLfuse_read_buf (const char *file, struct fuse_bufvec **bufp, size_t size,
+                      off_t off, struct fuse_file_info *fi) {
+	croak("read_buf(): NOT IMPLEMENTED, DO NOT USE YET!");
+}
+
+int _PLfuse_flock (const char *file, struct fuse_file_info *fi, int op) {
+	int rv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
+	FUSE_CONTEXT_PRE;
+	DEBUGf("flock begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+	XPUSHs(FH_GETHANDLE(fi));
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(fi->lock_owner)));
+#else
+	if (asprintf(&temp, "%llu", fi->lock_owner) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+#endif
+	XPUSHs(sv_2mortal(newSViv(op)));
+
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[43],G_SCALAR);
+	SPAGAIN;
+	rv = (rv ? POPi : 0);
+
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("flock end: %i\n", rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+
+#if FUSE_FOUND_MICRO_VER >= 1
+int _PLfuse_fallocate (const char *file, int mode, off_t offset, off_t length,
+                       struct fuse_file_info *fi) {
+	int rv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
+	FUSE_CONTEXT_PRE;
+	DEBUGf("fallocate begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+	XPUSHs(FH_GETHANDLE(fi));
+	XPUSHs(sv_2mortal(newSViv(mode)));
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(offset)));
+#else
+	if (asprintf(&temp, "%llu", offset) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+#endif
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(length)));
+#else
+	if (asprintf(&temp, "%llu", length) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+#endif
+
+	PUTBACK;
+	rv = call_sv(MY_CXT.callback[43],G_SCALAR);
+	SPAGAIN;
+	rv = (rv ? POPi : 0);
+
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("fallocate end: %i\n", rv);
+	FUSE_CONTEXT_POST;
+	return rv;
+}
+#endif /* FUSE_FOUND_MICRO_VER >= 1 */
+#endif /* FUSE_VERSION >= 29 */
+
 struct fuse_operations _available_ops = {
 .getattr		= _PLfuse_getattr,
 .readlink		= _PLfuse_readlink,
@@ -1602,6 +1709,14 @@ struct fuse_operations _available_ops = {
 .ioctl			= _PLfuse_ioctl,
 .poll			= _PLfuse_poll,
 #endif /* FUSE_VERSION >= 28 */
+#if FUSE_VERSION >= 29
+.write_buf		= _PLfuse_write_buf,
+.read_buf		= _PLfuse_read_buf,
+.flock			= _PLfuse_flock,
+#if FUSE_FOUND_MICRO_VER >= 1
+.fallocate		= _PLfuse_fallocate,
+#endif /* FUSE_FOUND_MICRO_VER >= 1 */
+#endif /* FUSE_VERSION >= 29 */
 };
 
 MODULE = Fuse		PACKAGE = Fuse
@@ -1678,12 +1793,23 @@ fuse_get_context()
 	OUTPUT:
 	RETVAL
 
-SV *
+void
 fuse_version()
-	CODE:
-	RETVAL = newSVpvf("%d.%d", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
-	OUTPUT:
-	RETVAL
+	PPCODE:
+	int gimme = GIMME_V;
+	if (gimme == G_SCALAR)
+		XPUSHs(sv_2mortal(newSVpvf("%d.%d", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION)));
+	else if (gimme == G_ARRAY) {
+#ifdef FUSE_FOUND_MICRO_VER
+		XPUSHs(sv_2mortal(newSViv(FUSE_FOUND_MAJOR_VER)));
+		XPUSHs(sv_2mortal(newSViv(FUSE_FOUND_MINOR_VER)));
+		XPUSHs(sv_2mortal(newSViv(FUSE_FOUND_MICRO_VER)));
+#else
+		XPUSHs(sv_2mortal(newSViv(FUSE_MAJOR_VERSION)));
+		XPUSHs(sv_2mortal(newSViv(FUSE_MINOR_VERSION)));
+		XPUSHs(sv_2mortal(newSViv(0)));
+#endif
+	}
 
 SV *
 XATTR_CREATE()
@@ -1699,6 +1825,24 @@ XATTR_REPLACE()
 	OUTPUT:
 	RETVAL
 
+#if FUSE_VERSION >= 29
+
+SV *
+UTIME_NOW()
+	CODE:
+	RETVAL = newSViv(UTIME_NOW);
+	OUTPUT:
+	RETVAL
+
+SV *
+UTIME_OMIT()
+	CODE:
+	RETVAL = newSViv(UTIME_OMIT);
+	OUTPUT:
+	RETVAL
+
+#endif /* FUSE_VERSION >= 29 */
+
 void
 perl_fuse_main(...)
 	PREINIT:
@@ -1710,7 +1854,7 @@ perl_fuse_main(...)
 	struct fuse_chan *fc;
 	dMY_CXT;
 	INIT:
-	if(items != N_CALLBACKS + 6) {
+	if(items != N_CALLBACKS + N_FLAGS) {
 		fprintf(stderr,"Perl<->C inconsistency or internal error\n");
 		XSRETURN_UNDEF;
 	}
@@ -1737,8 +1881,12 @@ perl_fuse_main(...)
 	fops.flag_nullpath_ok = SvIV(ST(4));
 #endif /* FUSE_VERSION >= 28 */
 	MY_CXT.utimens_as_array = SvIV(ST(5));
+#if FUSE_VERSION >= 29
+	fops.flag_nopath = SvIV(ST(6));
+	fops.flag_utime_omit_ok = SvIV(ST(7));
+#endif /* FUSE_VERSION >= 29 */
 	for(i=0;i<N_CALLBACKS;i++) {
-		SV *var = ST(i+6);
+		SV *var = ST(i+N_FLAGS);
 		/* allow symbolic references, or real code references. */
 		if(SvOK(var) && (SvPOK(var) || (SvROK(var) && SvTYPE(SvRV(var)) == SVt_PVCV))) {
 			void **tmp1 = (void**)&_available_ops, **tmp2 = (void**)&fops;
@@ -1753,7 +1901,7 @@ perl_fuse_main(...)
 		} else if(SvOK(var)) {
 			croak("invalid callback (%i) passed to perl_fuse_main "
 			      "(%s is not a string, code ref, or undef).\n",
-			      i+6,SvPVbyte_nolen(var));
+			      i+N_FLAGS,SvPVbyte_nolen(var));
 		} else {
 			MY_CXT.callback[i] = NULL;
 		}
