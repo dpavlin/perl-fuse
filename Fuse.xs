@@ -259,14 +259,14 @@ int _PLfuse_getdir(const char *file, fuse_dirh_t dirh, fuse_dirfil_t dirfil) {
 	SPAGAIN;
 	if(prv) {
 		/* Should yield the bottom of the current stack... */
-		swp = &TOPs - prv + 1;
+		swp = SP - prv + 1;
 		rv = POPi;
 		/* Sort of a hack to walk the stack in order, instead of reverse
 		 * order - trying to explain to potential users why they need to
 		 * reverse the order of this array would be confusing, at best. */
-		while (swp <= &TOPs)
+		while (swp <= SP)
 			dirfil(dirh,SvPVx_nolen(*(swp++)),0,0);
-                SP -= prv - 1;
+		SP -= prv - 1;
 	} else {
 		fprintf(stderr,"getdir() handler returned nothing!\n");
 		rv = -ENOSYS;
@@ -991,7 +991,7 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 	SPAGAIN;
 	if (prv) {
 		/* Should yield the bottom of the current stack... */
-		swp = &TOPs - prv + 1;
+		swp = SP - prv + 1;
 		rv = POPi;
 		memset(&st, 0, sizeof(struct stat));
 		/* Sort of a hack to walk the stack in order, instead of reverse
@@ -1045,7 +1045,7 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 			else
 				fprintf(stderr, "ERROR: Unknown entry passed via readdir\n");
 		}
-                SP -= prv - 1;
+		SP -= prv - 1;
 	} else {
 		fprintf(stderr,"readdir() handler returned nothing!\n");
 		rv = -ENOSYS;

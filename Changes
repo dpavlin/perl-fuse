@@ -105,3 +105,7 @@ Revision history for Perl extension Fuse.
 	- Improve compatibility with Fuse4X.
 	- Improve future compatibility with non-Linux FUSE 2.8
 	  implementations.
+
+0.16
+	- Fixed unbounded stack growth due to previous changes in getdir()
+	  and readdir() wrappers that didn't properly decrement SP.
