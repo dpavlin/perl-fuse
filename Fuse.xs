@@ -1584,7 +1584,105 @@ int _PLfuse_write_buf (const char *file, struct fuse_bufvec *buf, off_t off,
 
 int _PLfuse_read_buf (const char *file, struct fuse_bufvec **bufp, size_t size,
                       off_t off, struct fuse_file_info *fi) {
-	croak("read_buf(): NOT IMPLEMENTED, DO NOT USE YET!");
+	int rv;
+	SV *readbuf;
+	HV *bvhash;
+	struct fuse_bufvec *src;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
+	FUSE_CONTEXT_PRE;
+	DEBUGf("read_buf begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+	XPUSHs(sv_2mortal(newSViv(size)));
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(off)));
+#else
+	if (asprintf(&temp, "%llu", off) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
+	/* Create the 'readbuf' SV, and preallocate it to the requested read
+	 * size; this should allow us to zero-copy safely. */
+	readbuf = newSVpv("", 0);
+	SvLEN_set(readbuf, size);
+	bvhash = newHV();
+	(void) hv_store(bvhash, "size",  4, newSViv(size), 0);
+	(void) hv_store(bvhash, "flags", 5, newSViv(0),    0);
+	(void) hv_store(bvhash, "mem",   3, readbuf,       0);
+	(void) hv_store(bvhash, "fd",    2, &PL_sv_undef,  0);
+	(void) hv_store(bvhash, "pos",   3, &PL_sv_undef,  0);
+	XPUSHs(sv_2mortal(newRV_noinc((SV*) bvhash)));
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+
+	rv = call_sv(MY_CXT.callback[42], G_SCALAR);
+	SPAGAIN;
+	if (!rv)
+		rv = -ENOENT;
+	else {
+		SV **svp;
+
+		rv = POPi;
+		if (rv)
+			goto READ_BUF_FAIL;
+
+		src = malloc(sizeof(struct fuse_bufvec));
+		if (src == NULL)
+			croak("Memory allocation failure!");
+		*src = FUSE_BUFVEC_INIT(size);
+		if ((svp = hv_fetch(bvhash, "flags", 5, 0)) != NULL) {
+			src->buf[0].flags = SvIV(*svp);
+		}
+		if (src->buf[0].flags & FUSE_BUF_IS_FD) {
+			if ((svp = hv_fetch(bvhash, "fd",    2, 0)) != NULL) {
+				src->buf[0].fd = SvIV(*svp);
+			}
+			else
+				croak("FUSE_BUF_IS_FD passed but no fd!");
+
+			if (src->buf[0].flags & FUSE_BUF_FD_SEEK) {
+				if ((svp = hv_fetch(bvhash, "pos",   3, 0)) != NULL) {
+					src->buf[0].fd = SvIV(*svp);
+				}
+				else
+					croak("FUSE_BUF_FD_SEEK passed but no pos!");
+			}
+		}
+		else {
+			if ((svp = hv_fetch(bvhash, "mem",   3, 0)) != NULL) {
+				SvREADONLY(*svp);
+				/* This is a dirty cheat, that ends up
+				 * leaking memory, but since the memory
+				 * gets free()'d by libfuse (or the kernel?)
+				 * it causes a double-free() in libc, which
+				 * makes things sad. I really need to fix
+				 * this... */
+				//SvREFCNT_inc(*svp);
+				src->buf[0].mem = SvPV_nolen(*svp);
+				/* Should keep Perl from free()ing the memory
+				 * zone the SV points to, since it'll be
+				 * free()'d elsewhere at most any time... */
+				SvLEN_set(*svp, 0);
+			}
+		}
+		if ((svp = hv_fetch(bvhash, "size",  4, 0)) != NULL) {
+			src->buf[0].size = SvIV(*svp);
+		}
+		*bufp = src;
+	}
+
+READ_BUF_FAIL:
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("read_buf end: %i\n", rv);
+	FUSE_CONTEXT_POST;
+	return rv;
 }
 
 int _PLfuse_flock (const char *file, struct fuse_file_info *fi, int op) {
@@ -1652,7 +1750,7 @@ int _PLfuse_fallocate (const char *file, int mode, off_t offset, off_t length,
 #endif
 
 	PUTBACK;
-	rv = call_sv(MY_CXT.callback[43],G_SCALAR);
+	rv = call_sv(MY_CXT.callback[44],G_SCALAR);
 	SPAGAIN;
 	rv = (rv ? POPi : 0);
 

@@ -17,7 +17,7 @@ mkdir $_real;
 diag "mounting $_loop to $_point";
 open REALSTDOUT, '>&STDOUT';
 open REALSTDERR, '>&STDERR';
-open STDOUT, '>', '/tmp/fusemnt.log';
+open STDOUT, '>', '/dev/null';
 open STDERR, '>&', \*STDOUT;
 system("perl -Iblib/lib -Iblib/arch $_loop $_opts $_point");
 open STDOUT, '>&', \*REALSTDOUT;

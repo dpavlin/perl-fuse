@@ -48,7 +48,7 @@ use Fcntl qw(S_ISBLK S_ISCHR S_ISFIFO SEEK_SET S_ISREG S_ISFIFO S_IMODE S_ISCHR 
 use Getopt::Long;
 
 my %extraopts = ( 'threaded' => 0, 'debug' => 0 );
-my($use_real_statfs, $pidfile);
+my($use_real_statfs, $pidfile, $logfile);
 GetOptions(
     'use-threads'       => sub {
         if ($has_threads) {
@@ -60,6 +60,7 @@ GetOptions(
     },
     'use-real-statfs'   => \$use_real_statfs,
     'pidfile=s'         => \$pidfile,
+    'logfile=s'         => \$logfile,
 ) || die('Error parsing options');
 
 sub fixup { return "/tmp/fusetest-" . $ENV{LOGNAME} . shift }
@@ -98,6 +99,20 @@ sub x_read {
     return -ENOSYS() unless open($handle,$file);
     if(seek($handle,$off,SEEK_SET)) {
         read($handle,$rv,$bufsize);
+    }
+    return $rv;
+}
+
+sub x_read_buf {
+    my ($file, $size, $off, $bufvec) = @_;
+    my $rv = 0;
+    my ($handle) = new IO::File;
+    return -ENOENT() unless -e ($file = fixup($file));
+    my ($fsize) = -s $file;
+    return -ENOSYS() unless open($handle,$file);
+    print STDERR "x_read_buf(): test 1\n";
+    if(seek($handle,$off,SEEK_SET)) {
+        $bufvec->{'size'} = read($handle,$bufvec->{'mem'},$size);
     }
     return $rv;
 }
@@ -203,12 +218,16 @@ sub x_statfs {
 sub daemonize {
     chdir("/") || die "can't chdir to /: $!";
     open(STDIN, "< /dev/null") || die "can't read /dev/null: $!";
-    open(STDOUT, "> /dev/null") || die "can't write to /dev/null: $!";
+    if ($logfile) {
+        open(STDOUT, '>', $logfile) || die "can't open logfile: $!";
+    }
+    else {
+        open(STDOUT, "> /dev/null") || die "can't write to /dev/null: $!";
+    }
     defined(my $pid = fork()) || die "can't fork: $!";
     exit if $pid; # non-zero now means I am the parent
     (setsid() != -1) || die "Can't start a new session: $!";
     open(STDERR, ">&STDOUT") || die "can't dup stdout: $!";
-
     if ($pidfile) {
         open(PIDFILE, '>', $pidfile);
         print PIDFILE $$, "\n";
@@ -254,6 +273,7 @@ Fuse::main(
     'utime'         => 'main::x_utime',
     'open'          => 'main::x_open',
     'read'          => 'main::x_read',
+    'read_buf'      => 'main::x_read_buf',
     'write'         => 'main::x_write',
     'statfs'        => 'main::x_statfs',
     %extraopts,

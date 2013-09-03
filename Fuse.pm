@@ -20,8 +20,9 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
+		    'all' => [ qw(UTIME_NOW UTIME_OMIT XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
 		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ],
+		    'utime' => [ qw(UTIME_NOW UTIME_OMIT) ],
 		    'ioctl' => [ qw(FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
 		    );
 
@@ -254,6 +255,26 @@ as arrays containing the time in seconds, and a second value containing
 the number of nanoseconds, instead of a floating point value. This allows
 for more precise times, as the normal floating point type used by Perl
 (double) loses accuracy starting at about tenths of a microsecond.
+
+=item nopath => boolean
+
+Flag indicating that the path need not be calculated for the following
+operations:
+
+read, write, flush, release, fsync, readdir, releasedir, fsyncdir,
+ftruncate, fgetattr, lock, ioctl and poll
+
+Closely related to nullpath_ok, but if this flag is set then the path will
+not be calculated even if the file wasn't unlinked. However the path can
+still be defined if it needs to be calculated for some other reason.
+
+=item utime_omit_ok => boolean
+
+Flag indicating that the filesystem accepts special UTIME_NOW and
+UTIME_OMIT values in its C<utimens> operation.
+
+If you wish to use these constants, make sure to include the ':utime' flag
+when including the Fuse module, or the ':ALL' flag.
 
 =back
 
