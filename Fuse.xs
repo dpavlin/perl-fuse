@@ -1655,18 +1655,11 @@ int _PLfuse_read_buf (const char *file, struct fuse_bufvec **bufp, size_t size,
 		}
 		else {
 			if ((svp = hv_fetch(bvhash, "mem",   3, 0)) != NULL) {
-				SvREADONLY(*svp);
-				/* This is a dirty cheat, that ends up
-				 * leaking memory, but since the memory
-				 * gets free()'d by libfuse (or the kernel?)
-				 * it causes a double-free() in libc, which
-				 * makes things sad. I really need to fix
-				 * this... */
-				//SvREFCNT_inc(*svp);
 				src->buf[0].mem = SvPV_nolen(*svp);
 				/* Should keep Perl from free()ing the memory
 				 * zone the SV points to, since it'll be
-				 * free()'d elsewhere at most any time... */
+				 * free()'d elsewhere at (potentially) any
+				 * time... */
 				SvLEN_set(*svp, 0);
 			}
 		}
@@ -1936,6 +1929,27 @@ SV *
 UTIME_OMIT()
 	CODE:
 	RETVAL = newSViv(UTIME_OMIT);
+	OUTPUT:
+	RETVAL
+
+SV *
+FUSE_BUF_IS_FD()
+	CODE:
+	RETVAL = newSViv(FUSE_BUF_IS_FD);
+	OUTPUT:
+	RETVAL
+
+SV *
+FUSE_BUF_FD_SEEK()
+	CODE:
+	RETVAL = newSViv(FUSE_BUF_FD_SEEK);
+	OUTPUT:
+	RETVAL
+
+SV *
+FUSE_BUF_FD_RETRY()
+	CODE:
+	RETVAL = newSViv(FUSE_BUF_FD_RETRY);
 	OUTPUT:
 	RETVAL
 

@@ -20,9 +20,10 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(UTIME_NOW UTIME_OMIT XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
+		    'all' => [ qw(FUSE_BUF_IS_FD FUSE_BUF_FD_SEEK FUSE_BUF_FD_RETRY UTIME_NOW UTIME_OMIT XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
 		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ],
 		    'utime' => [ qw(UTIME_NOW UTIME_OMIT) ],
+		    'zerocopy' => [ qw(FUSE_BUF_IS_FD FUSE_BUF_FD_SEEK FUSE_BUF_FD_RETRY) ],
 		    'ioctl' => [ qw(FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
 		    );
 
@@ -778,7 +779,25 @@ NOT YET IMPLEMENTED
 
 =head3 read_buf
 
-NOT YET IMPLEMENTED
+Arguments: Pathname, size, offset, buffer access hash, (optional) file handle.
+
+Store data from an open file in a buffer.
+
+Similar to the C<read> method, but data is stored and returned in a generic
+buffer.
+
+No actual copying of data has to take place, the source file descriptor
+may simply be placed in the 'fd' member of the buffer access hash (and
+the 'flags' member OR'd with FUSE_BUF_IS_FD) for later retrieval.
+
+Also, if the FUSE_BUF_FD_SEEK constant is OR'd with 'flags', the 'pos'
+member should contain the offset (in bytes) to seek to in the file
+descriptor.
+
+If data is to be read, the read data should be placed in the 'mem' member
+of the buffer access hash, and the 'size' member should be updated if less
+data was read than requested. (The 'mem' member is preallocated to the
+expected request size.)
 
 =head3 flock
 
