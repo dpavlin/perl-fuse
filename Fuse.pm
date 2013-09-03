@@ -115,9 +115,13 @@ sub main {
 		if(exists($otherargs{$name})) {
 			$otherargs{$name} = $subref;
 		} else {
-			croak "There is no function $name" unless exists($mapping{$name});
 			croak "Usage: Fuse::main(getattr => \"main::my_getattr\", ...)" unless $subref;
-			$subs[$mapping{$name}] = $subref;
+			if (exists $mapping{$name}) {
+				$subs[$mapping{$name}] = $subref;
+			}
+			else {
+				carp "There is no function $name";
+			}
 		}
 	}
 	if($otherargs{threaded}) {
