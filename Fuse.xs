@@ -1592,6 +1592,14 @@ int _PLfuse_write_buf (const char *file, struct fuse_bufvec *buf, off_t off,
 	SAVETMPS;
 	PUSHMARK(SP);
 	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(off)));
+#else
+	if (asprintf(&temp, "%llu", off) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
 	bvlist = newAV();
 	for (i = 0; i < buf->count; i++) {
 		bvhash = newHV();
@@ -1615,14 +1623,6 @@ int _PLfuse_write_buf (const char *file, struct fuse_bufvec *buf, off_t off,
 		av_push(bvlist, newRV((SV *)bvhash));
 	}
 	XPUSHs(sv_2mortal(newRV_noinc((SV *)bvlist)));
-#ifdef PERL_HAS_64BITINT
-	XPUSHs(sv_2mortal(newSViv(off)));
-#else
-	if (asprintf(&temp, "%llu", off) == -1)
-		croak("Memory allocation failure!");
-	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
-	free(temp);
-#endif
 	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
 

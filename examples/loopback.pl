@@ -133,7 +133,7 @@ sub x_write {
 }
 
 sub x_write_buf {
-    my ($file,$bufvec,$off) = @_;
+    my ($file,$off,$bufvec) = @_;
     my ($rv);
     return -ENOENT() unless -e ($file = fixup($file));
     my ($fsize) = -s $file;

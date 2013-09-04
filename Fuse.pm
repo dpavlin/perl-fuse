@@ -779,11 +779,16 @@ to make this an object instead.
 
 =head3 write_buf
 
-NOT YET IMPLEMENTED
+Arguments: Pathname, offset, buffer vector, (optional) file handle.
+
+Write contents of buffer to an open file.
+
+Similar to the C<write> method, but data is supplied in a generic buffer.
+Use fuse_buf_copy() to transfer data to the destination if necessary.
 
 =head3 read_buf
 
-Arguments: Pathname, size, offset, buffer access hash, (optional) file handle.
+Arguments: Pathname, size, offset, buffer vector, (optional) file handle.
 
 Store data from an open file in a buffer.
 
