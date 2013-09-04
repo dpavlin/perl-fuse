@@ -638,6 +638,7 @@ int _PLfuse_read (const char *file, char *buf, size_t buflen, off_t off,
 
 int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, struct fuse_file_info *fi) {
 	int rv;
+	SV *sv;
 #ifndef PERL_HAS_64BITINT
 	char *temp;
 #endif
@@ -647,7 +648,13 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 	SAVETMPS;
 	PUSHMARK(SP);
 	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
-	XPUSHs(sv_2mortal(newSVpvn(buf,buflen)));
+	sv = newSV_type(SVt_PV);
+	SvPV_set(sv, buf);
+	SvLEN_set(sv, 0);
+	SvCUR_set(sv, buflen);
+	SvPOK_on(sv);
+	SvREADONLY_on(sv);
+	XPUSHs(sv_2mortal(sv));
 #ifdef PERL_HAS_64BITINT
 	XPUSHs(sv_2mortal(newSViv(off)));
 #else
