@@ -1579,14 +1579,70 @@ int _PLfuse_poll(const char *file, struct fuse_file_info *fi,
 #if FUSE_VERSION >= 29
 int _PLfuse_write_buf (const char *file, struct fuse_bufvec *buf, off_t off,
                        struct fuse_file_info *fi) {
-	croak("write_buf(): NOT IMPLEMENTED, DO NOT USE YET!");
+	int rv, i;
+	HV *bvhash;
+	AV *bvlist;
+	SV *sv;
+#ifndef PERL_HAS_64BITINT
+	char *temp;
+#endif
+	FUSE_CONTEXT_PRE;
+	DEBUGf("write_buf begin\n");
+	ENTER;
+	SAVETMPS;
+	PUSHMARK(SP);
+	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
+	bvlist = newAV();
+	for (i = 0; i < buf->count; i++) {
+		bvhash = newHV();
+		sv = newSViv(buf->buf[i].size);
+		(void) hv_store(bvhash, "size",  4, sv, 0);
+		sv = newSViv(buf->buf[i].flags);
+		(void) hv_store(bvhash, "flags", 5, sv, 0);
+		sv = &PL_sv_undef;
+		if (buf->buf[i].mem) {
+			sv = newSV_type(SVt_PV);
+			SvPV_set(sv, (char *)buf->buf[i].mem);
+			SvLEN_set(sv, 0);
+			SvCUR_set(sv, buf->buf[i].size);
+			SvPOK_on(sv);
+			SvREADONLY_on(sv);
+		}
+		(void) hv_store(bvhash, "mem",   3, sv, 0); 
+		sv = newSViv(buf->buf[i].fd);
+		(void) hv_store(bvhash, "fd",    2, sv, 0);
+		sv = newSViv(buf->buf[i].pos);
+		av_push(bvlist, newRV((SV *)bvhash));
+	}
+	XPUSHs(sv_2mortal(newRV_noinc((SV *)bvlist)));
+#ifdef PERL_HAS_64BITINT
+	XPUSHs(sv_2mortal(newSViv(off)));
+#else
+	if (asprintf(&temp, "%llu", off) == -1)
+		croak("Memory allocation failure!");
+	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
+	free(temp);
+#endif
+	XPUSHs(FH_GETHANDLE(fi));
+	PUTBACK;
+
+	rv = call_sv(MY_CXT.callback[41], G_SCALAR);
+	SPAGAIN;
+	rv = rv ? POPi : -ENOENT;
+
+	FREETMPS;
+	LEAVE;
+	PUTBACK;
+	DEBUGf("write_buf end: %i\n", rv);
+	FUSE_CONTEXT_POST;
+	return rv;
 }
 
 int _PLfuse_read_buf (const char *file, struct fuse_bufvec **bufp, size_t size,
                       off_t off, struct fuse_file_info *fi) {
 	int rv;
-	SV *readbuf;
 	HV *bvhash;
+	AV *bvlist;
 	struct fuse_bufvec *src;
 #ifndef PERL_HAS_64BITINT
 	char *temp;
@@ -1606,17 +1662,15 @@ int _PLfuse_read_buf (const char *file, struct fuse_bufvec **bufp, size_t size,
 	XPUSHs(sv_2mortal(newSVpv(temp, 0)));
 	free(temp);
 #endif
-	/* Create the 'readbuf' SV, and preallocate it to the requested read
-	 * size; this should allow us to zero-copy safely. */
-	readbuf = newSVpv("", 0);
-	SvLEN_set(readbuf, size);
+	bvlist = newAV();
 	bvhash = newHV();
-	(void) hv_store(bvhash, "size",  4, newSViv(size), 0);
-	(void) hv_store(bvhash, "flags", 5, newSViv(0),    0);
-	(void) hv_store(bvhash, "mem",   3, readbuf,       0);
-	(void) hv_store(bvhash, "fd",    2, &PL_sv_undef,  0);
-	(void) hv_store(bvhash, "pos",   3, &PL_sv_undef,  0);
-	XPUSHs(sv_2mortal(newRV_noinc((SV*) bvhash)));
+	(void) hv_store(bvhash, "size",  4, newSViv(size),   0);
+	(void) hv_store(bvhash, "flags", 5, newSViv(0),      0);
+	(void) hv_store(bvhash, "mem",   3, newSVpv("", 0),  0);
+	(void) hv_store(bvhash, "fd",    2, newSViv(-1),     0);
+	(void) hv_store(bvhash, "pos",   3, newSViv(0),      0);
+	av_push(bvlist, newRV((SV *)bvhash));
+	XPUSHs(sv_2mortal(newRV_noinc((SV*) bvlist)));
 	XPUSHs(FH_GETHANDLE(fi));
 	PUTBACK;
 
@@ -1626,45 +1680,51 @@ int _PLfuse_read_buf (const char *file, struct fuse_bufvec **bufp, size_t size,
 		rv = -ENOENT;
 	else {
 		SV **svp;
+		int i;
 
 		rv = POPi;
 		if (rv)
 			goto READ_BUF_FAIL;
 
-		src = malloc(sizeof(struct fuse_bufvec));
+		src = malloc(sizeof(struct fuse_bufvec) +
+		    (av_len(bvlist) * sizeof(struct fuse_buf)));
 		if (src == NULL)
 			croak("Memory allocation failure!");
-		*src = FUSE_BUFVEC_INIT(size);
-		if ((svp = hv_fetch(bvhash, "flags", 5, 0)) != NULL) {
-			src->buf[0].flags = SvIV(*svp);
-		}
-		if (src->buf[0].flags & FUSE_BUF_IS_FD) {
-			if ((svp = hv_fetch(bvhash, "fd",    2, 0)) != NULL) {
-				src->buf[0].fd = SvIV(*svp);
-			}
-			else
-				croak("FUSE_BUF_IS_FD passed but no fd!");
-
-			if (src->buf[0].flags & FUSE_BUF_FD_SEEK) {
-				if ((svp = hv_fetch(bvhash, "pos",   3, 0)) != NULL) {
-					src->buf[0].fd = SvIV(*svp);
-				}
+		*src = FUSE_BUFVEC_INIT(0);
+		src->count = av_len(bvlist) + 1;
+		for (i = 0; i <= av_len(bvlist); i++) {
+			svp = av_fetch(bvlist, i, 1);
+			if (svp == NULL || *svp == NULL || !SvROK(*svp) ||
+			    (bvhash = (HV *)SvRV(*svp)) == NULL ||
+			    SvTYPE((SV *)bvhash) != SVt_PVHV)
+				croak("Entry provided as part of bufvec was wrong!");
+			if ((svp = hv_fetch(bvhash, "size",  4, 0)) != NULL)
+				src->buf[i].size = SvIV(*svp);
+			if ((svp = hv_fetch(bvhash, "flags", 5, 0)) != NULL)
+				src->buf[i].flags = SvIV(*svp);
+			if (src->buf[i].flags & FUSE_BUF_IS_FD) {
+				if ((svp = hv_fetch(bvhash, "fd",    2, 0)) != NULL)
+					src->buf[i].fd = SvIV(*svp);
 				else
-					croak("FUSE_BUF_FD_SEEK passed but no pos!");
+					croak("FUSE_BUF_IS_FD passed but no fd!");
+
+				if (src->buf[i].flags & FUSE_BUF_FD_SEEK) {
+					if ((svp = hv_fetch(bvhash, "pos",   3, 0)) != NULL)
+						src->buf[i].fd = SvIV(*svp);
+					else
+						croak("FUSE_BUF_FD_SEEK passed but no pos!");
+				}
 			}
-		}
-		else {
-			if ((svp = hv_fetch(bvhash, "mem",   3, 0)) != NULL) {
-				src->buf[0].mem = SvPV_nolen(*svp);
-				/* Should keep Perl from free()ing the memory
-				 * zone the SV points to, since it'll be
-				 * free()'d elsewhere at (potentially) any
-				 * time... */
-				SvLEN_set(*svp, 0);
+			else {
+				if ((svp = hv_fetch(bvhash, "mem",   3, 0)) != NULL) {
+					src->buf[i].mem = SvPV_nolen(*svp);
+					/* Should keep Perl from free()ing the memory
+					 * zone the SV points to, since it'll be
+					 * free()'d elsewhere at (potentially) any
+					 * time... */
+					SvLEN_set(*svp, 0);
+				}
 			}
-		}
-		if ((svp = hv_fetch(bvhash, "size",  4, 0)) != NULL) {
-			src->buf[0].size = SvIV(*svp);
 		}
 		*bufp = src;
 	}

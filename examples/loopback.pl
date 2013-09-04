@@ -30,6 +30,7 @@ eval {
 	1;
 } and do {
 	$use_lchown = 1;
+	Lchown->import();
 };
 
 my $has_mknod = 0;
@@ -38,6 +39,7 @@ eval {
         1;
 } and do {
         $has_mknod = 1;
+	Unix::Mknod->import();
 };
 
 use blib;
@@ -110,9 +112,8 @@ sub x_read_buf {
     return -ENOENT() unless -e ($file = fixup($file));
     my ($fsize) = -s $file;
     return -ENOSYS() unless open($handle,$file);
-    print STDERR "x_read_buf(): test 1\n";
     if(seek($handle,$off,SEEK_SET)) {
-        $bufvec->{'size'} = read($handle,$bufvec->{'mem'},$size);
+        $bufvec->[0]{'size'} = read($handle,$bufvec->[0]{'mem'},$size);
     }
     return $rv;
 }
@@ -129,6 +130,21 @@ sub x_write {
     $rv = -ENOSYS() unless $rv;
     close(FILE);
     return length($buf);
+}
+
+sub x_write_buf {
+    my ($file,$bufvec,$off) = @_;
+    my ($rv);
+    return -ENOENT() unless -e ($file = fixup($file));
+    my ($fsize) = -s $file;
+    return -ENOSYS() unless open(FILE,'+<',$file);
+    return -EBADF() unless $#$bufvec == 0 and !($bufvec->[0]{flags} & &Fuse::FUSE_BUF_IS_FD());
+    if($rv = seek(FILE,$off,SEEK_SET)) {
+        $rv = print(FILE $bufvec->[0]{mem});
+    }
+    $rv = -ENOSYS() unless $rv;
+    close(FILE);
+    return $rv;
 }
 
 sub err { return (-shift || -$!) }
@@ -217,17 +233,17 @@ sub x_statfs {
 # from http://perldoc.perl.org/perlipc.html#Complete-Dissociation-of-Child    -from-Parent
 sub daemonize {
     chdir("/") || die "can't chdir to /: $!";
-    open(STDIN, "< /dev/null") || die "can't read /dev/null: $!";
+    open(STDIN, '<', '/dev/null') || die "can't read /dev/null: $!";
     if ($logfile) {
         open(STDOUT, '>', $logfile) || die "can't open logfile: $!";
     }
     else {
-        open(STDOUT, "> /dev/null") || die "can't write to /dev/null: $!";
+        open(STDOUT, '>', '/dev/null') || die "can't write to /dev/null: $!";
     }
     defined(my $pid = fork()) || die "can't fork: $!";
     exit if $pid; # non-zero now means I am the parent
     (setsid() != -1) || die "Can't start a new session: $!";
-    open(STDERR, ">&STDOUT") || die "can't dup stdout: $!";
+    open(STDERR, '>&', \*STDOUT) || die "can't dup stdout: $!";
     if ($pidfile) {
         open(PIDFILE, '>', $pidfile);
         print PIDFILE $$, "\n";
@@ -275,6 +291,7 @@ Fuse::main(
     'read'          => 'main::x_read',
     'read_buf'      => 'main::x_read_buf',
     'write'         => 'main::x_write',
+    'write_buf'     => 'main::x_write_buf',
     'statfs'        => 'main::x_statfs',
     %extraopts,
 );
