@@ -113,7 +113,7 @@ sub x_read_buf {
     my ($fsize) = -s $file;
     return -ENOSYS() unless open($handle,$file);
     if(seek($handle,$off,SEEK_SET)) {
-        $bufvec->[0]{'size'} = read($handle,$bufvec->[0]{'mem'},$size);
+        $rv = $bufvec->[0]{'size'} = read($handle,$bufvec->[0]{'mem'},$size);
     }
     return $rv;
 }
