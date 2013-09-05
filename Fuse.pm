@@ -6,6 +6,7 @@ use warnings;
 use Errno;
 use Carp;
 use Config;
+use List::Util qw(sum);
 
 require Exporter;
 require DynaLoader;
@@ -20,7 +21,7 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(FUSE_BUF_IS_FD FUSE_BUF_FD_SEEK FUSE_BUF_FD_RETRY UTIME_NOW UTIME_OMIT XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
+		    'all' => [ qw(FUSE_BUF_IS_FD FUSE_BUF_FD_SEEK FUSE_BUF_FD_RETRY UTIME_NOW UTIME_OMIT XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version fuse_buf_copy fuse_buf_size FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
 		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ],
 		    'utime' => [ qw(UTIME_NOW UTIME_OMIT) ],
 		    'zerocopy' => [ qw(FUSE_BUF_IS_FD FUSE_BUF_FD_SEEK FUSE_BUF_FD_RETRY) ],
@@ -144,6 +145,11 @@ sub main {
 		}
 	}
 	perl_fuse_main(@otherargs{@otherargs},@subs);
+}
+
+sub fuse_buf_size {
+	my ($buf) = @_;
+	return sum(map { $_->{size} } @$buf);
 }
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
