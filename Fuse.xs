@@ -649,7 +649,7 @@ int _PLfuse_write (const char *file, const char *buf, size_t buflen, off_t off, 
 	PUSHMARK(SP);
 	XPUSHs(file ? sv_2mortal(newSVpv(file,0)) : &PL_sv_undef);
 	sv = newSV_type(SVt_PV);
-	SvPV_set(sv, buf);
+	SvPV_set(sv, (char *)buf);
 	SvLEN_set(sv, 0);
 	SvCUR_set(sv, buflen);
 	SvPOK_on(sv);
@@ -1690,7 +1690,7 @@ int _PLfuse_read_buf (const char *file, struct fuse_bufvec **bufp, size_t size,
 		int i;
 
 		rv = POPi;
-		if (rv)
+		if (rv < 0)
 			goto READ_BUF_FAIL;
 
 		src = malloc(sizeof(struct fuse_bufvec) +
@@ -2017,6 +2017,120 @@ SV *
 FUSE_BUF_FD_RETRY()
 	CODE:
 	RETVAL = newSViv(FUSE_BUF_FD_RETRY);
+	OUTPUT:
+	RETVAL
+
+ssize_t
+fuse_buf_copy(...)
+	PREINIT:
+	struct fuse_bufvec *dst = NULL, *src = NULL;
+	AV *av_src, *av_dst;
+	HV *hv;
+	SV **svp, *sv;
+	int i;
+	INIT:
+	if (items != 2) {
+		fprintf(stderr, "fuse_buf_copy needs dst and src\n");
+		XSRETURN_UNDEF;
+	}
+	CODE:
+	sv = ST(0);
+	if (!(SvROK(sv) && SvTYPE(av_dst = (AV *)SvRV(sv)) == SVt_PVAV))
+		croak("Argument supplied was not arrayref!");
+	sv = ST(1);
+	if (!(SvROK(sv) && SvTYPE(av_src = (AV *)SvRV(sv)) == SVt_PVAV))
+		croak("Argument supplied was not arrayref!");
+
+	dst = malloc(sizeof(struct fuse_bufvec) +
+	    (av_len(av_dst) * sizeof(struct fuse_buf)));
+	if (dst == NULL)
+		croak("Memory allocation failure!");
+	*dst = FUSE_BUFVEC_INIT(0);
+	dst->count = av_len(av_dst) + 1;
+	for (i = 0; i <= av_len(av_dst); i++) {
+		svp = av_fetch(av_dst, i, 1);
+		if (svp == NULL || *svp == NULL || !SvROK(*svp) ||
+		    (hv = (HV *)SvRV(*svp)) == NULL ||
+		    SvTYPE((SV *)hv) != SVt_PVHV)
+			croak("Entry provided as part of bufvec was wrong!");
+		if ((svp = hv_fetch(hv, "size",  4, 0)) != NULL)
+			dst->buf[i].size = SvIV(*svp);
+		if ((svp = hv_fetch(hv, "flags", 5, 0)) != NULL)
+			dst->buf[i].flags = SvIV(*svp);
+		if (dst->buf[i].flags & FUSE_BUF_IS_FD) {
+			if ((svp = hv_fetch(hv, "fd",    2, 0)) != NULL)
+				dst->buf[i].fd = SvIV(*svp);
+			else
+				croak("FUSE_BUF_IS_FD passed but no fd!");
+		
+			if (dst->buf[i].flags & FUSE_BUF_FD_SEEK) {
+				if ((svp = hv_fetch(hv, "pos",   3, 0)) != NULL)
+					dst->buf[i].fd = SvIV(*svp);
+				else
+					croak("FUSE_BUF_FD_SEEK passed but no pos!");
+			}
+		}
+		else {
+			if ((svp = hv_fetch(hv, "mem",   3, 0)) != NULL) {
+				if ((dst->buf[i].mem = malloc(dst->buf[i].size)) == NULL)
+					croak("Memory allocation failure!");
+			}
+		}
+	}
+
+	src = malloc(sizeof(struct fuse_bufvec) +
+	    (av_len(av_src) * sizeof(struct fuse_buf)));
+	if (src == NULL)
+		croak("Memory allocation failure!");
+	*src = FUSE_BUFVEC_INIT(0);
+	src->count = av_len(av_src) + 1;
+	for (i = 0; i <= av_len(av_src); i++) {
+		svp = av_fetch(av_src, i, 1);
+		if (svp == NULL || *svp == NULL || !SvROK(*svp) ||
+		    (hv = (HV *)SvRV(*svp)) == NULL ||
+		    SvTYPE((SV *)hv) != SVt_PVHV)
+			croak("Entry provided as part of bufvec was wrong!");
+		if ((svp = hv_fetch(hv, "size",  4, 0)) != NULL)
+			src->buf[i].size = SvIV(*svp);
+		if ((svp = hv_fetch(hv, "flags", 5, 0)) != NULL)
+			src->buf[i].flags = SvIV(*svp);
+		if (src->buf[i].flags & FUSE_BUF_IS_FD) {
+			if ((svp = hv_fetch(hv, "fd",    2, 0)) != NULL)
+				src->buf[i].fd = SvIV(*svp);
+			else
+				croak("FUSE_BUF_IS_FD passed but no fd!");
+		
+			if (src->buf[i].flags & FUSE_BUF_FD_SEEK) {
+				if ((svp = hv_fetch(hv, "pos",   3, 0)) != NULL)
+					src->buf[i].fd = SvIV(*svp);
+				else
+					croak("FUSE_BUF_FD_SEEK passed but no pos!");
+			}
+		}
+		else {
+			if ((svp = hv_fetch(hv, "mem",   3, 0)) != NULL) {
+				src->buf[i].mem = SvPV_nolen(*svp);
+				SvLEN_set(*svp, 0);
+			}
+		}
+	}
+	RETVAL = fuse_buf_copy(dst, src, 0);
+	if (RETVAL > 0) {
+		for (i = 0; i < dst->count; i++) {
+			svp = av_fetch(av_dst, i, 1);
+			if (svp == NULL || *svp == NULL || !SvROK(*svp) ||
+			    (hv = (HV *)SvRV(*svp)) == NULL ||
+			    SvTYPE((SV *)hv) != SVt_PVHV)
+				croak("Entry provided as part of bufvec was wrong!");
+			sv = newSV_type(SVt_PV);
+			SvPV_set(sv, (char *)dst->buf[i].mem);
+			SvLEN_set(sv, dst->buf[i].size);
+			SvCUR_set(sv, dst->buf[i].size);
+			SvPOK_on(sv);
+			SvREADONLY_on(sv);
+			(void) hv_store(hv, "mem",   3, sv, 0);
+		}
+	}
 	OUTPUT:
 	RETVAL
 

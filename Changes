@@ -110,3 +110,4 @@ Revision history for Perl extension Fuse.
 	- Fixed unbounded stack growth due to previous changes in getdir()
 	  and readdir() wrappers that didn't properly decrement SP.
 	- Implement support for FUSE 2.9 specific operations.
+	- Make the write() wrapper do less data copying.
