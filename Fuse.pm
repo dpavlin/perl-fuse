@@ -279,6 +279,8 @@ Closely related to nullpath_ok, but if this flag is set then the path will
 not be calculated even if the file wasn't unlinked. However the path can
 still be defined if it needs to be calculated for some other reason.
 
+Only effective on Fuse 2.9 and up.
+
 =item utime_omit_ok => boolean
 
 Flag indicating that the filesystem accepts special UTIME_NOW and
@@ -286,6 +288,8 @@ UTIME_OMIT values in its C<utimens> operation.
 
 If you wish to use these constants, make sure to include the ':utime' flag
 when including the Fuse module, or the ':ALL' flag.
+
+Only effective on Fuse 2.9 and up.
 
 =back
 
@@ -301,8 +305,22 @@ Access context information about the current Fuse operation.
 =head3 Fuse::fuse_version
 
 Indicates the Fuse version in use; more accurately, indicates the version
-of the Fuse API in use at build time. Returned as a decimal value; i.e.,
-for Fuse API v2.6, will return "2.6".
+of the Fuse API in use at build time. If called in scalar context, the
+version will be returned as a decimal value; i.e., for Fuse API v2.6, will
+return "2.6". If called in array context, an array will be returned,
+containing the major, minor and micro version numbers of the Fuse API
+it was built against.
+
+=head3 Fuse::fuse_buf_size
+
+Computes the total size of a buffer vector. Applicable for C<read_buf>
+and C<write_buf> operations.
+
+=head3 Fuse::fuse_buf_copy
+
+Copies data from one buffer vector to another. Primarily useful if a
+buffer vector contains multiple, fragmented chunks or if it contains an
+FD buffer instead of a memory buffer. Applicable for C<write_buf>.
 
 =head3 Fuse::notify_poll
 
