@@ -805,8 +805,7 @@ descriptor.
 
 If data is to be read, the read data should be placed in the 'mem' member
 of the buffer access hash, and the 'size' member should be updated if less
-data was read than requested. (The 'mem' member is preallocated to the
-expected request size.)
+data was read than requested.
 
 =head3 flock
 
