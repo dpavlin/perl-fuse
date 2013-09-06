@@ -1985,6 +1985,8 @@ XATTR_REPLACE()
 
 #if FUSE_VERSION >= 29
 
+#ifdef __linux__
+
 SV *
 UTIME_NOW()
 	CODE:
@@ -1998,6 +2000,8 @@ UTIME_OMIT()
 	RETVAL = newSViv(UTIME_OMIT);
 	OUTPUT:
 	RETVAL
+
+#endif /* defined(__linux__) */
 
 SV *
 FUSE_BUF_IS_FD()
