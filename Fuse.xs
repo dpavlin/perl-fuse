@@ -2136,18 +2136,20 @@ fuse_buf_copy(...)
 			    (hv = (HV *)SvRV(*svp)) == NULL ||
 			    SvTYPE((SV *)hv) != SVt_PVHV)
 				croak("Entry provided as part of bufvec was wrong!");
+			if (!(dst->buf[i].flags & FUSE_BUF_IS_FD)) {
 #if (PERL_VERSION < 8) || (PERL_VERSION == 8 && PERL_SUBVERSION < 9)
-			sv = newSV(0);
-			sv_upgrade(sv, SVt_PV);
+				sv = newSV(0);
+				sv_upgrade(sv, SVt_PV);
 #else
-			sv = newSV_type(SVt_PV);
+				sv = newSV_type(SVt_PV);
 #endif
-			SvPV_set(sv, (char *)dst->buf[i].mem);
-			SvLEN_set(sv, dst->buf[i].size);
-			SvCUR_set(sv, dst->buf[i].size);
-			SvPOK_on(sv);
-			SvREADONLY_on(sv);
-			(void) hv_store(hv, "mem",   3, sv, 0);
+				SvPV_set(sv, (char *)dst->buf[i].mem);
+				SvLEN_set(sv, dst->buf[i].size);
+				SvCUR_set(sv, dst->buf[i].size);
+				SvPOK_on(sv);
+				SvREADONLY_on(sv);
+				(void) hv_store(hv, "mem",   3, sv, 0);
+			}
 		}
 	}
 	OUTPUT:
