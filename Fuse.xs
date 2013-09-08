@@ -2152,6 +2152,8 @@ fuse_buf_copy(...)
 			}
 		}
 	}
+	free(dst);
+	free(src);
 	OUTPUT:
 	RETVAL
 
