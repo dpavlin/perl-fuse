@@ -138,7 +138,19 @@ sub x_write_buf {
     return -ENOENT() unless -e ($file = fixup($file));
     my ($fsize) = -s $file;
     return -ENOSYS() unless open(FILE,'+<',$file);
-    return -EBADF() unless $#$bufvec == 0 and !($bufvec->[0]{flags} & &Fuse::FUSE_BUF_IS_FD());
+    # If by some chance we get a non-contiguous buffer, or an FD-based
+    # buffer (or both!), then copy all of it into one contiguous buffer.
+    if ($#$bufvec > 0 || $bufvec->[0]{flags} & &Fuse::FUSE_BUF_IS_FD()) {
+        my $single = [ {
+                flags   => 0,
+                fd      => -1,
+                mem     => undef,
+                pos     => 0,
+                size    => Fuse::fuse_buf_size($bufvec),
+        } ];
+        Fuse::fuse_buf_copy($single, $bufvec);
+        $bufvec = $single;
+    }
     if($rv = seek(FILE,$off,SEEK_SET)) {
         $rv = print(FILE $bufvec->[0]{mem});
     }
@@ -252,16 +264,23 @@ sub daemonize {
 }
 
 my ($mountpoint) = '';
-if(@ARGV){
+if (@ARGV){
         $mountpoint = shift(@ARGV)
-}else{
-        print "\n Usage: loopback.pl <mountpoint> [options]
-        \n Options:
+}
+else {
+        print <<'_EOT_';
+
+ Usage: loopback.pl <mountpoint> [options]
+
+ Options:
  --debug                Turn on debugging (verbose) output
  --use-threads          Use threads
  --use-real-statfs      Use real stat command against /tmp or generic values
- --pidfile              Set pidfile value --pidfile=<numeric-value>\n\n";
-        exit;
+ --pidfile              Create a file at the provided path containing PID
+ --logfile              Direct stdout/stderr to file instead of /dev/null
+
+_EOT_
+	exit;
 }
 
 if (! -d $mountpoint) {
