@@ -1620,7 +1620,7 @@ int _PLfuse_write_buf (const char *file, struct fuse_bufvec *buf, off_t off,
 		sv = newSViv(buf->buf[i].flags);
 		(void) hv_store(bvhash, "flags", 5, sv, 0);
 		sv = &PL_sv_undef;
-		if (buf->buf[i].mem) {
+		if (!(buf->buf[i].flags & FUSE_BUF_IS_FD)) {
 #if (PERL_VERSION < 8) || (PERL_VERSION == 8 && PERL_SUBVERSION < 9)
 			sv = newSV(0);
 			sv_upgrade(sv, SVt_PV);
