@@ -1637,6 +1637,7 @@ int _PLfuse_write_buf (const char *file, struct fuse_bufvec *buf, off_t off,
 		sv = newSViv(buf->buf[i].fd);
 		(void) hv_store(bvhash, "fd",    2, sv, 0);
 		sv = newSViv(buf->buf[i].pos);
+		(void) hv_store(bvhash, "pos",   3, sv, 0);
 		av_push(bvlist, newRV((SV *)bvhash));
 	}
 	XPUSHs(sv_2mortal(newRV_noinc((SV *)bvlist)));
