@@ -287,7 +287,7 @@ Flag indicating that the filesystem accepts special UTIME_NOW and
 UTIME_OMIT values in its C<utimens> operation.
 
 If you wish to use these constants, make sure to include the ':utime' flag
-when including the Fuse module, or the ':ALL' flag.
+when including the Fuse module, or the ':all' flag.
 
 Only effective on Fuse 2.9 and up.
 
