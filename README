@@ -74,23 +74,52 @@ allow things like closures, lexical subs and that sort of thing, but it does
 work for me.
 
 Currently tests have been attempted and succeeded on:
-  * Ubuntu 10.10/amd64
-  * Ubuntu 11.04/amd64
-  * Debian 5.0/powerpc
-  * CentOS 5.6/amd64
-  * NetBSD 5.1/i386
-  * NetBSD 5.1/amd64
-  * FreeBSD 8.2/i386
-  * FreeBSD 8.2/amd64
-  * MacOS X 10.6.7
+  * Ubuntu 13.04/amd64
+  * Fedora 19/amd64
+  * CentOS 6.4/amd64
+  * CentOS 5.9/amd64
+  * CentOS 5.9/i386
+  * OpenSuSE 12.3/amd64
+  * Debian 7.1/powerpc
+  * Slackware 13.1/amd64
+  * NetBSD 6.1.1/amd64
+  * FreeBSD 9.1/amd64
+  * MacOS X 10.6.8 [OSXFUSE 2.6.1]
+  * MacOS X 10.7.5 [OSXFUSE 2.6.1]
 
-Note that on NetBSD, there are several bugs in libpuffs and librefuse
-which prevent some tests from succeeding. There are fixes in NetBSD's
-MAIN branch, specifically revisions 1.26 and 1.27 on src/lib/libpuffs/subr.c,
-which correct the issues that cause the test failures. However, there is
-still a bug in librefuse that causes readdir() to only be called once.
-We will be addressing this with the appropriate developers in the near
-future.
 
-Also note that on NetBSD and FreeBSD, extended attributes do not work. These
-are specifics related to the FUSE implementations on those platforms.
+NOTES FOR BSD USERS
+
+On NetBSD, there is a potential issue with readdir() only being called
+once when using librefuse. However, currently using Perfuse causes other
+issues (readlink() drops the last character from the read link path, and
+the block count in stat() is incorrect). We will be addressing these
+concerns with the appropriate developers in the near future.
+
+If you are using Perfuse on NetBSD, you should do the following (as root):
+
+cat >> /etc/sysctl.conf <<_EOT_
+kern.sbmax=2621440
+net.inet.tcp.sendbuf_max=2621440
+net.inet6.tcp6.sendbuf_max=2621440
+_EOT_
+sysctl -f /etc/sysctl.conf
+
+Perfuse uses TCP sockets, and needs large send buffers.
+
+On NetBSD and FreeBSD, extended attributes do not work. These are
+specifically related to the FUSE implementations on those platforms.
+
+Normally you can not mount FUSE filesystems as non-root users on FreeBSD
+and NetBSD. They can allow non-root users to mount FUSE filesystems, but
+instead of changing the mode of /dev/fuse or /bin/fusermount, you need
+to use sysctl to allow user mounts. For FreeBSD, this involves (as root):
+
+sysctl -w vfs.usermount=1
+pw usermod <your username here> -G operator
+
+And on NetBSD (also as root):
+
+sysctl -w vfs.generic.usermount=1
+chmod 0660 /dev/putter
+usermod -G wheel <your username here>

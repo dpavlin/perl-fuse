@@ -82,6 +82,18 @@ chomp(my $def = '-Wall -DFUSE_USE_VERSION=26 ' . `pkg-config --cflags-only-other
 chomp($def .= `pkg-config --libs-only-other fuse 2> /dev/null`);
 $def .= ' -DPERL_HAS_64BITINT' if $Config{'use64bitint'};
 
+# As a feature was added in a micro version update (fallocate(),
+# specifically), we need to know the micro version level, and there's
+# nothing in the headers that supplies it, so I'm gonna ghetto this
+# up.
+my ($major, $minor, $micro) = split(m{\.}, $fusever);
+if (!defined $micro) {
+    $micro = 0;
+}
+$def .= ' -DFUSE_FOUND_MAJOR_VER=' . $major;
+$def .= ' -DFUSE_FOUND_MINOR_VER=' . $minor;
+$def .= ' -DFUSE_FOUND_MICRO_VER=' . $micro;
+
 WriteMakefile(
     'NAME'          => 'Fuse',
     'VERSION_FROM'  => 'Fuse.pm', # finds $VERSION
