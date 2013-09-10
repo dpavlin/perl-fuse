@@ -6,6 +6,7 @@ use warnings;
 use Errno;
 use Carp;
 use Config;
+use List::Util qw(sum);
 
 require Exporter;
 require DynaLoader;
@@ -20,8 +21,10 @@ our @ISA = qw(Exporter DynaLoader);
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = (
-		    'all' => [ qw(XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
+		    'all' => [ qw(FUSE_BUF_IS_FD FUSE_BUF_FD_SEEK FUSE_BUF_FD_RETRY UTIME_NOW UTIME_OMIT XATTR_CREATE XATTR_REPLACE fuse_get_context fuse_version fuse_buf_copy fuse_buf_size FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV notify_poll pollhandle_destroy) ],
 		    'xattr' => [ qw(XATTR_CREATE XATTR_REPLACE) ],
+		    'utime' => [ qw(UTIME_NOW UTIME_OMIT) ],
+		    'zerocopy' => [ qw(FUSE_BUF_IS_FD FUSE_BUF_FD_SEEK FUSE_BUF_FD_RETRY) ],
 		    'ioctl' => [ qw(FUSE_IOCTL_COMPAT FUSE_IOCTL_UNRESTRICTED FUSE_IOCTL_RETRY FUSE_IOCTL_MAX_IOV) ],
 		    );
 
@@ -75,8 +78,10 @@ sub main {
 			flush release fsync setxattr getxattr listxattr removexattr
 			opendir readdir releasedir fsyncdir init destroy access
 			create ftruncate fgetattr lock utimens bmap);
-	my $fuse_version = fuse_version();
-	if ($fuse_version >= 2.8) {
+	my ($fuse_vmajor, $fuse_vminor, $fuse_vmicro) = fuse_version();
+	my $fuse_version = $fuse_vmajor + ($fuse_vminor * 1.0 / 1_000) +
+		($fuse_vmicro * 1.0 / 1_000_000);
+	if ($fuse_version >= 2.008) {
 		# junk doesn't contain a function pointer, and hopefully
 		# never will; it's a "dead" zone in the struct
 		# fuse_operations where a flag bit is declared. we don't
@@ -86,10 +91,16 @@ sub main {
 		# the last 2 wrapper functions no big thing.
 		push(@names, qw/junk ioctl poll/);
 	}
+	if ($fuse_version >= 2.009) {
+		push(@names, qw/write_buf read_buf flock/);
+	}
+	if ($fuse_version >= 2.009001) {
+		push(@names, qw/fallocate/);
+	}
 	my @subs = map {undef} @names;
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
-	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok utimens_as_array);
+	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok utimens_as_array nopath utime_omit_ok);
 	my %otherargs = (
 			  debug			=> 0,
 			  threaded		=> 0,
@@ -97,15 +108,21 @@ sub main {
 			  mountopts		=> "",
 			  nullpath_ok		=> 0,
 			  utimens_as_array	=> 0,
+			  nopath		=> 0,
+			  utime_omit_ok		=> 0,
 			);
 	while(my $name = shift) {
 		my ($subref) = shift;
 		if(exists($otherargs{$name})) {
 			$otherargs{$name} = $subref;
 		} else {
-			croak "There is no function $name" unless exists($mapping{$name});
 			croak "Usage: Fuse::main(getattr => \"main::my_getattr\", ...)" unless $subref;
-			$subs[$mapping{$name}] = $subref;
+			if (exists $mapping{$name}) {
+				$subs[$mapping{$name}] = $subref;
+			}
+			else {
+				carp "There is no function $name";
+			}
 		}
 	}
 	if($otherargs{threaded}) {
@@ -128,6 +145,11 @@ sub main {
 		}
 	}
 	perl_fuse_main(@otherargs{@otherargs},@subs);
+}
+
+sub fuse_buf_size {
+	my ($buf) = @_;
+	return sum(map { $_->{size} } @$buf);
 }
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
@@ -245,6 +267,30 @@ the number of nanoseconds, instead of a floating point value. This allows
 for more precise times, as the normal floating point type used by Perl
 (double) loses accuracy starting at about tenths of a microsecond.
 
+=item nopath => boolean
+
+Flag indicating that the path need not be calculated for the following
+operations:
+
+read, write, flush, release, fsync, readdir, releasedir, fsyncdir,
+ftruncate, fgetattr, lock, ioctl and poll
+
+Closely related to nullpath_ok, but if this flag is set then the path will
+not be calculated even if the file wasn't unlinked. However the path can
+still be defined if it needs to be calculated for some other reason.
+
+Only effective on Fuse 2.9 and up.
+
+=item utime_omit_ok => boolean
+
+Flag indicating that the filesystem accepts special UTIME_NOW and
+UTIME_OMIT values in its C<utimens> operation.
+
+If you wish to use these constants, make sure to include the ':utime' flag
+when including the Fuse module, or the ':ALL' flag.
+
+Only effective on Fuse 2.9 and up.
+
 =back
 
 =head3 Fuse::fuse_get_context
@@ -259,8 +305,22 @@ Access context information about the current Fuse operation.
 =head3 Fuse::fuse_version
 
 Indicates the Fuse version in use; more accurately, indicates the version
-of the Fuse API in use at build time. Returned as a decimal value; i.e.,
-for Fuse API v2.6, will return "2.6".
+of the Fuse API in use at build time. If called in scalar context, the
+version will be returned as a decimal value; i.e., for Fuse API v2.6, will
+return "2.6". If called in array context, an array will be returned,
+containing the major, minor and micro version numbers of the Fuse API
+it was built against.
+
+=head3 Fuse::fuse_buf_size
+
+Computes the total size of a buffer vector. Applicable for C<read_buf>
+and C<write_buf> operations.
+
+=head3 Fuse::fuse_buf_copy
+
+Copies data from one buffer vector to another. Primarily useful if a
+buffer vector contains multiple, fragmented chunks or if it contains an
+FD buffer instead of a memory buffer. Applicable for C<write_buf>.
 
 =head3 Fuse::notify_poll
 
@@ -508,7 +568,7 @@ is closed. It may be called multiple times before a file is closed.
 
 =head3 release
 
-Arguments: Pathname, numeric flags passed to open, file handle
+Arguments: Pathname, numeric flags passed to open, file handle, flock_release flag (when built against FUSE 2.9 or later), lock owner ID (when built against FUSE 2.9 or later)
 
 Returns an errno or 0 on success.
 
@@ -740,6 +800,64 @@ FUSE, so POLLPRI/POLLRDBAND/POLLWRBAND won't work.
 
 Poll handle is currently a read-only scalar; we are investigating a way
 to make this an object instead.
+
+=head3 write_buf
+
+Arguments: Pathname, offset, buffer vector, (optional) file handle.
+
+Write contents of buffer to an open file.
+
+Similar to the C<write> method, but data is supplied in a generic buffer.
+Use fuse_buf_copy() to transfer data to the destination if necessary.
+
+=head3 read_buf
+
+Arguments: Pathname, size, offset, buffer vector, (optional) file handle.
+
+Store data from an open file in a buffer.
+
+Similar to the C<read> method, but data is stored and returned in a generic
+buffer.
+
+No actual copying of data has to take place, the source file descriptor
+may simply be placed in the 'fd' member of the buffer access hash (and
+the 'flags' member OR'd with FUSE_BUF_IS_FD) for later retrieval.
+
+Also, if the FUSE_BUF_FD_SEEK constant is OR'd with 'flags', the 'pos'
+member should contain the offset (in bytes) to seek to in the file
+descriptor.
+
+If data is to be read, the read data should be placed in the 'mem' member
+of the buffer access hash, and the 'size' member should be updated if less
+data was read than requested.
+
+=head3 flock
+
+Arguments: pathname, (optional) file handle, unique lock owner ID, operation ID
+
+Perform BSD-style file locking operations.
+
+Operation ID will be one of LOCK_SH, LOCK_EX or LOCK_UN. Non-blocking lock
+requests will be indicated by having LOCK_NB OR'd into the value.
+
+For more information, see the flock(2) manpage. For the lock symbols, do:
+
+  use Fcntl qw(flock);
+
+Locking is handled locally, but this allows (especially for networked file
+systems) for protocol-level locking semantics to also be employed, if any
+are available.
+
+=head3 fallocate
+
+Arguments: pathname, (optional) file handle, mode, offset, length
+
+Allocates space for an open file.
+
+This function ensures that required space is allocated for specified file.
+If this function returns success then any subsequent write request to
+specified range is guaranteed not to fail because of lack of space on
+the file system media.
 
 =head1 EXAMPLES
 
