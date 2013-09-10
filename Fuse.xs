@@ -5,14 +5,14 @@
 
 #include <fuse.h>
 
-#if (defined(__FreeBSD__) && !defined(__APPLE__)) || defined(__NetBSD__)
+#if (defined(__FreeBSD__) && !defined(__APPLE__)) || defined(__NetBSD__) || defined(__sun__)
 # define XATTR_CREATE 1
 # define XATTR_REPLACE 2
 #else
 # include <sys/xattr.h>
 #endif
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__sun__)
 # define STAT_SEC(st, st_xtim) ((st)->st_xtim.tv_sec)
 # define STAT_NSEC(st, st_xtim) ((st)->st_xtim.tv_nsec)
 #else
