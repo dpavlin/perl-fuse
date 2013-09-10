@@ -87,6 +87,7 @@ Currently tests have been attempted and succeeded on:
   * MacOS X 10.6.8 [OSXFUSE 2.6.1]
   * MacOS X 10.7.5 [OSXFUSE 2.6.1]
 
+
 NOTES FOR BSD USERS
 
 On NetBSD, there is a potential issue with readdir() only being called
