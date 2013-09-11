@@ -116,3 +116,5 @@ Revision history for Perl extension Fuse.
 	  handling generic buffers inside read_buf and write_buf
 	  wrappers.
 	- Make the write() wrapper do less data copying.
+	- Improve compatibility with OpenIndiana (an open flavor of
+	  Solaris).
