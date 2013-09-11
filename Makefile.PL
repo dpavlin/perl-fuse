@@ -57,6 +57,16 @@ unless ($fusever) {
     elsif ($^O eq 'darwin') {
         $explanation = 'Please install OSXFUSE from http://osxfuse.github.com/';
     }
+    elsif ($^O eq 'solaris') {
+        open(my $motd, '<', '/etc/motd');
+        my $line = <$motd>;
+        if ($line =~ /^OpenIndiana /) {
+            $explanation = 'Please enable the \'sfe\' repository, and install the libfuse package';
+        }
+        else {
+            $explanation = 'Don\'t know how to enable FUSE support on this Solaris flavor';
+        }
+    }
     else {
         $explanation = 'There is no FUSE support for your platform to our knowledge, sorry';
     }

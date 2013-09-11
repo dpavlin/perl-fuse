@@ -19,7 +19,8 @@ if($0 !~ qr|s/u?mount\.t$|) {
 		my $pid = do {local $/ = undef; <$fh>};
 		close $fh;
 		if(kill 0, $pid) {
-			if(`mount` =~ m{on (?:/private)?$_point }) {
+			my $pattern = $^O eq 'solaris' ? qr{^$_point on }m : qr{on (?:/private)?$_point };
+			if(`mount` =~ $pattern) {
 				$reject = 0;
 			} else {
 				kill 1, $pid;
