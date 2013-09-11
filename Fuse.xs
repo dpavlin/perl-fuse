@@ -2245,7 +2245,7 @@ perl_fuse_main(...)
 	fc = fuse_mount(mountpoint,&args);
 	if (fc == NULL)
 		croak("could not mount fuse filesystem!\n");
-#ifndef __NetBSD__
+#if !defined(USING_LIBREFUSE)
 	if(MY_CXT.threaded) {
 		fuse_loop_mt(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
 	} else

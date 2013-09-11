@@ -91,6 +91,7 @@ if ($^O eq 'darwin' && (uname())[2] =~ /^1[01]\./) {
 chomp(my $def = '-Wall -DFUSE_USE_VERSION=26 ' . `pkg-config --cflags-only-other fuse 2> /dev/null` || '-D_FILE_OFFSET_BITS=64');
 chomp($def .= `pkg-config --libs-only-other fuse 2> /dev/null`);
 $def .= ' -DPERL_HAS_64BITINT' if $Config{'use64bitint'};
+$def .= ' -DUSING_LIBREFUSE' if $libs =~ m{-lrefuse\b};
 
 # As a feature was added in a micro version update (fallocate(),
 # specifically), we need to know the micro version level, and there's
