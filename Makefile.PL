@@ -128,7 +128,7 @@ WriteMakefile(
             },
         })
     ),
-    'LIBS'          => '-lpthread ' . $libs, # e.g., '-lm'
+    'LIBS'          => $libs, # e.g., '-lm'
     'DEFINE'        => $def, # e.g., '-DHAVE_SOMETHING'
     'OPTIMIZE'      => '-g -ggdb',
     # Insert -I. if you add *.h files later:

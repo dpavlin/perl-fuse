@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use test::helper qw($_real $_point);
 use Test::More;
+if ($^O eq 'openbsd') { exit(); }
 plan tests => 5;
 chdir($_point);
 open($file, '>', 'frog');

@@ -92,6 +92,11 @@ sub x_open {
     return 0;
 }
 
+sub x_release {
+    my ($file) = fixup(shift);
+    return 0;
+}
+
 sub x_read {
     my ($file,$bufsize,$off) = @_;
     my ($rv) = -ENOSYS();
@@ -197,6 +202,17 @@ sub x_utime { return utime($_[1],$_[2],fixup($_[0])) ? 0:-$!; }
 sub x_mkdir { my ($name, $perm) = @_; return 0 if mkdir(fixup($name),$perm); return -$!; }
 sub x_rmdir { return 0 if rmdir fixup(shift); return -$!; }
 
+sub x_create {
+    my ($file, $modes, $flags) = @_;
+    printf(STDERR "x_create(): file: \"\%s\"; modes: \%o; flags: \%o\n", $file, $modes, $flags);
+    $file = fixup($file);
+    open(FILE, '>', $file) || return -$!;
+    print FILE '';
+    close(FILE);
+    chmod S_IMODE($modes), $file;
+    return 0;
+}
+
 sub x_mknod {
     # since this is called for ALL files, not just devices, I'll do some checks
     # and possibly run the real mknod command.
@@ -295,6 +311,7 @@ Fuse::main(
     'getattr'       => 'main::x_getattr',
     'readlink'      => 'main::x_readlink',
     'getdir'        => 'main::x_getdir',
+    'create'        => 'main::x_create',
     'mknod'         => 'main::x_mknod',
     'mkdir'         => 'main::x_mkdir',
     'unlink'        => 'main::x_unlink',
@@ -307,6 +324,7 @@ Fuse::main(
     'truncate'      => 'main::x_truncate',
     'utime'         => 'main::x_utime',
     'open'          => 'main::x_open',
+    'release'       => 'main::x_release',
     'read'          => 'main::x_read',
     'read_buf'      => 'main::x_read_buf',
     'write'         => 'main::x_write',

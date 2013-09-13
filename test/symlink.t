@@ -18,7 +18,7 @@ open($file, '>', 'dira/filea');
 close($file);
 symlink('filea', 'dira/fileb');
 my $cp = 'cp -a';
-if ($^O eq 'netbsd') { $cp = 'cp -R'; }
+if ($^O eq 'netbsd' || $^O eq 'openbsd') { $cp = 'cp -R'; }
 is(system($cp . " dira dirb")>>8,0,$cp);
 map { unlink($_) } ('dira/filea', 'dira/fileb', 'dirb/filea', 'dirb/fileb');
 map { rmdir($_) } ('dira', 'dirb');

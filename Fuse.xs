@@ -12,6 +12,11 @@
 # define XATTR_REPLACE 2
 #endif
 
+#ifdef __OpenBSD__
+#define FUSE_MAJOR_VERSION FUSE_FOUND_MAJOR_VER
+#define FUSE_MINOR_VERSION FUSE_FOUND_MINOR_VER
+#endif /* defined(__OpenBSD__) */
+
 #if defined(__linux__) || defined(__sun__)
 # define STAT_SEC(st, st_xtim) ((st)->st_xtim.tv_sec)
 # define STAT_NSEC(st, st_xtim) ((st)->st_xtim.tv_nsec)
@@ -1942,8 +1947,11 @@ CLONE(...)
 SV*
 fuse_get_context()
 	PREINIT:
+#ifndef __OpenBSD__
 	struct fuse_context *fc;
+#endif /* !defined(__OpenBSD__) */
 	CODE:
+#ifndef __OpenBSD__
 	fc = fuse_get_context();
 	if(fc) {
 		HV *hash = newHV();
@@ -1957,8 +1965,11 @@ fuse_get_context()
 #endif /* FUSE_VERSION >= 28 */
 		RETVAL = newRV_noinc((SV*)hash);
 	} else {
+#endif /* !defined(__OpenBSD__) */
 		XSRETURN_UNDEF;
+#ifndef __OpenBSD__
 	}
+#endif /* !defined(__OpenBSD__) */
 	OUTPUT:
 	RETVAL
 
@@ -2167,7 +2178,9 @@ perl_fuse_main(...)
 	int i, debug;
 	char *mountpoint;
 	char *mountopts;
+#ifndef __OpenBSD__
 	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
+#endif /* !defined(__OpenBSD__) */
 	struct fuse_chan *fc;
 	dMY_CXT;
 	INIT:
@@ -2228,6 +2241,7 @@ perl_fuse_main(...)
 	 * to hack on compatibility with other parts of the new API. First and
 	 * foremost, real C argc/argv would be good to get at...
 	 */
+#ifndef __OpenBSD__
 	if ((mountopts || debug) && fuse_opt_add_arg(&args, "") == -1) {
 		fuse_opt_free_args(&args);
 		croak("out of memory\n");
@@ -2243,16 +2257,25 @@ perl_fuse_main(...)
 		croak("out of memory\n");
 	}
 	fc = fuse_mount(mountpoint,&args);
+#else /* defined(__OpenBSD__) */
+	fc = fuse_mount(mountpoint,NULL);
+#endif /* !defined(__OpenBSD__) */
 	if (fc == NULL)
 		croak("could not mount fuse filesystem!\n");
-#if !defined(USING_LIBREFUSE)
+#if !defined(USING_LIBREFUSE) && !defined(__OpenBSD__)
 	if(MY_CXT.threaded) {
 		fuse_loop_mt(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
 	} else
-#endif
+#endif /* !defined(USING_LIBREFUSE) && !defined(__OpenBSD__) */
+#ifndef __OpenBSD__
 		fuse_loop(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
+#else /* defined(__OpenBSD__) */
+		fuse_loop(fuse_new(fc,NULL,&fops,sizeof(fops),NULL));
+#endif /* !defined(__OpenBSD__) */
 	fuse_unmount(mountpoint,fc);
+#ifndef __OpenBSD__
 	fuse_opt_free_args(&args);
+#endif /* !defined(__OpenBSD__) */
 
 #if FUSE_VERSION >= 28
 
