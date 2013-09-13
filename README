@@ -123,3 +123,94 @@ And on NetBSD (also as root):
 sysctl -w vfs.generic.usermount=1
 chmod 0660 /dev/putter
 usermod -G wheel <your username here>
+
+
+NOTES FOR OPENBSD IN PARTICULAR
+
+Oh, hello. You're an OpenBSD user. You like your secure, minimalist OS, but
+you really want in on that FUSE-y goodness. Well, it's still pretty early
+and kind of broken, but yes, FUSE has actually made its way onto OpenBSD.
+
+That said, it's not (as of this writing) in a released version. It *has*
+made its way into OpenBSD's CVS HEAD, but unless you're feeling very
+brave, you may not want to take that leap. You should, however, read this
+mailing list thread:
+
+http://marc.info/?t=136248759400010&r=1&w=4
+
+Even after patching with the latest userspace and kernel code patches,
+I still needed to add the following to src/sys/miscfs/fuse/fuse_vfsops.c,
+as line 23:
+
+#include <sys/filedesc.h>
+
+For me, it wouldn't build otherwise. You should be familiar with building
+a kernel, and your entire userspace; if not, read the OpenBSD FAQ.
+
+Once you've built your kernel, installed it, and built and installed your
+new userspace, reboot. You may also need to copy /usr/src/lib/libfuse/fuse.h
+to /usr/include/fuse.h. (I did.) Also, for the tests, I recommend installing
+devel/p5-Lchown, and installing Filesys::Statvfs, Unix::Mknod and Test::Pod
+out of CPAN.
+
+Okay, once you've done all that, run (as root):
+
+cd /dev
+./MAKEDEV fuse
+
+If that doesn't work, do this (also as root):
+
+cd /usr/src/etc
+make
+cp etc.`uname -m`/MAKEDEV /dev
+cd /dev
+./MAKEDEV fuse
+
+Now, in your perl-fuse distribution, run:
+
+perl Makefile.PL
+make
+
+You'll probably need to 'make test' as root. If you want to run your FUSE
+filesystem as non-root, run the following (as root):
+
+sysctl kern.usermount=1
+chmod 0660 /dev/fuse0
+
+Now, you should be able to run 'make test'. Yes, there are some test
+failures. No, those actually aren't our fault. Here are some things
+you should know about the state of FUSE on OpenBSD:
+
+ * truncate() does not work. This is not our fault. The fuse kernel
+   driver doesn't implement any support for truncate(), never mind
+   libfuse. It literally doesn't do anything with it.
+ * You can't make anything other than plain files, directories and
+   symlinks right now. The kernel driver doesn't support it yet.
+ * There is a bug if a file is created in the fuse filesystem and goes
+   away, then you create another file of the same name via FUSE and
+   try to do utime(). Not sure if it's just utime() or if other things
+   trip it too, but I discovered that via playing around. I *THINK*
+   it's a vnode caching problem.
+ * There's a reason the rename() test doesn't run. IT WILL CRASH YOUR
+   KERNEL. No joke. The rename() op in the kernel driver is busted.
+ * The kernel code passes the trailing null character at the end of
+   the read symlink path in readlink(). This causes all sorts of fun
+   trouble. This needs to be fixed in the kernel driver.
+ * fuse_get_context() returns an undef, because the reimplemented
+   libfuse doesn't implement that. It also doesn't do any argument
+   handling at all. Hence why it's all #ifndef'd out for OpenBSD.
+ * mknod() will not get called to create a plain file. You need to
+   implement create(), unless the OpenBSD devs fix libfuse to call
+   mknod() for plain files.
+ * You should probably implement release(); the kernel driver whines
+   a lot about the ENOSYS if you don't.
+ * You should probably implement all of chown(), chmod() and
+   utime() and/or utimens(). The kernel driver will mask out future
+   setattr() requests if it gets ENOSYS from ANY of these. Oops.
+ * Oh, and don't interrupt the FUSE implementation while it's running.
+   If you do (or if it aborts for some reason), umount the mountpoint
+   ASAP. If you don't, and especially if you then try to mount the
+   filesystem on that mountpoint again, you can hang your kernel. Not
+   even kidding. I have done this.
+
+Anyway, happy FUSEing!
