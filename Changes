@@ -118,3 +118,4 @@ Revision history for Perl extension Fuse.
 	- Make the write() wrapper do less data copying.
 	- Improve compatibility with OpenIndiana (an open flavor of
 	  Solaris).
+	- Add support for OpenBSD's flavor of FUSE.
