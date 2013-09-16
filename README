@@ -66,13 +66,6 @@ subdirectory.  These are:
 
 BUGS
 
-At time of writing, Perl (5.8.7) did not support shared subroutine references.
-Symptoms include a cryptic error message like "Invalid value for shared scalar"
-from Fuse.pm.  Until this is fixed, if you use threaded mode, you need to use
-symbolic references (i.e. passing "main::cb" instead of \&cb).  This doesn't
-allow things like closures, lexical subs and that sort of thing, but it does
-work for me.
-
 Currently tests have been attempted and succeeded on:
   * Ubuntu 13.04/amd64
   * Fedora 19/amd64
