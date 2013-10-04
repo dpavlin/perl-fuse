@@ -99,7 +99,17 @@ typedef struct {
 START_MY_CXT;
 
 #ifdef FUSE_USE_ITHREADS
+typedef struct thx_cxt_t thx_cxt_t;
+struct thx_cxt_t {
+	tTHX interp;
+	perl_mutex lock;
+	int active;
+	thx_cxt_t *next;
+};
+
 tTHX master_interp = NULL;
+thx_cxt_t *cxt_stack = NULL;
+perl_mutex cxt_stack_lock;
 
 #define CLONE_INTERP(parent) S_clone_interp(parent)
 tTHX S_clone_interp(pTHX) {
@@ -121,8 +131,84 @@ tTHX S_clone_interp(pTHX) {
 	return NULL;
 }
 
-# define FUSE_CONTEXT_PRE dTHX; if(!aTHX) aTHX = CLONE_INTERP(master_interp); { dMY_CXT; dSP;
-# define FUSE_CONTEXT_POST }
+#define acqTHX S_acquire_THX()
+#define relTHX S_unlock_THX(S_find_THX(aTHX))
+
+int S_lock_THX(thx_cxt_t *cxt) {
+	if(cxt) {
+		MUTEX_LOCK(&(cxt->lock));
+		if(!cxt->active) {
+			cxt->active = 1;
+			MUTEX_UNLOCK(&(cxt->lock));
+			return 1;
+		}
+		MUTEX_UNLOCK(&(cxt->lock));
+	}
+
+	return 0;
+}
+
+void S_unlock_THX(thx_cxt_t *cxt) {
+	if(cxt) {
+		MUTEX_LOCK(&(cxt->lock));
+		cxt->active = 0;
+		MUTEX_UNLOCK(&(cxt->lock));
+	}
+}
+
+// find the THX context for the specified THX
+thx_cxt_t *S_find_THX(pTHX) {
+	thx_cxt_t *cxt = cxt_stack;
+	while(cxt) {
+		if(cxt->interp == aTHX) {
+			return cxt;
+		}
+		cxt = cxt->next;
+	}
+
+	return NULL;
+}
+
+void S_acquire_THX() {
+	thx_cxt_t *cxt;
+
+	// try using the active THX if we have one
+	dTHX;
+	if(aTHX && S_lock_THX(S_find_THX(aTHX))) {
+		// we locked it, so no additional processing is needed
+		return;
+	}
+
+	// look for an unlocked THX to use
+	// TODO: make the search more fair, it currently favors new interpreters and should favor infrequently used interpreters
+	cxt = cxt_stack;
+	while(cxt) {
+		if(S_lock_THX(cxt)) {
+			// we were able to lock this THX, so let's use it with this thread
+			PERL_SET_CONTEXT(cxt->interp);
+			return;
+		}
+		cxt = cxt->next;
+	}
+
+	// otherwise let's create a new THX
+	aTHX = CLONE_INTERP(master_interp);
+	Newx(cxt, sizeof(thx_cxt_t), thx_cxt_t);
+	cxt->interp = aTHX;
+	cxt->active = 1;
+	MUTEX_INIT(&(cxt->lock));
+	cxt->next = NULL;
+
+	// let's put this in the cxt_stack
+	MUTEX_LOCK(&cxt_stack_lock);
+	cxt->next = cxt_stack;
+	cxt_stack = cxt;
+	MUTEX_UNLOCK(&cxt_stack_lock);
+}
+
+
+# define FUSE_CONTEXT_PRE acqTHX; dTHX; dMY_CXT; dSP;
+# define FUSE_CONTEXT_POST relTHX;
 #else
 # define FUSE_CONTEXT_PRE dTHX; dMY_CXT; dSP;
 # define FUSE_CONTEXT_POST
