@@ -103,9 +103,9 @@ tTHX master_interp = NULL;
 
 #define CLONE_INTERP(parent) S_clone_interp(parent)
 tTHX S_clone_interp(tTHX parent) {
-#  if (PERL_VERSION < 10)
-	tTHX my_perl = parent;
-#endif
+# if (PERL_VERSION < 10)
+	dTHXa(parent);
+# endif
 	dMY_CXT_INTERP(parent);
 	if(MY_CXT.threaded) {
 		MUTEX_LOCK(&MY_CXT.mutex);
@@ -1914,7 +1914,7 @@ CLONE(...)
 #ifdef USE_ITHREADS
 		MY_CXT_CLONE;
 		tTHX parent = MY_CXT.self;
-		MY_CXT.self = my_perl;
+		MY_CXT.self = aTHX;
 #if (PERL_VERSION < 10) || (PERL_VERSION == 10 && PERL_SUBVERSION <= 0)
 		/* CLONE entered without a pointer table, so we can't safely clone static data */
 		if(!PL_ptr_table) {
