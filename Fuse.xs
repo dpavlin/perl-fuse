@@ -2274,6 +2274,7 @@ perl_fuse_main(...)
 #ifdef FUSE_USE_ITHREADS
 		master_interp = aTHX;
 		MUTEX_INIT(&master_lock);
+		MUTEX_INIT(&cxt_stack_lock);
 		SvSHARE((SV*)(MY_CXT.handles));
 #else
 		fprintf(stderr,"FUSE warning: Your script has requested multithreaded "
