@@ -57,11 +57,6 @@
 #  define FUSE_USE_ITHREADS
 #  if (PERL_VERSION < 8) || (PERL_VERSION == 8 && PERL_SUBVERSION < 9)
 #    define tTHX PerlInterpreter*
-#    define STR_WITH_LEN(s)  ("" s ""), (sizeof(s)-1)
-#    define hv_fetchs(hv,key,lval) Perl_hv_fetch(aTHX_ hv, STR_WITH_LEN(key), lval)
-#    define dMY_CXT_INTERP(interp) \
-	SV *my_cxt_sv = *hv_fetchs(interp->Imodglobal, MY_CXT_KEY, TRUE); \
-	my_cxt_t *my_cxtp = INT2PTR(my_cxt_t*, SvUV(my_cxt_sv))
 #  endif
 # else
 #  warning "Sorry, I don't know how to handle ithreads on this architecture. Building non-threaded version"
@@ -90,13 +85,12 @@ typedef struct {
 #ifdef USE_ITHREADS
 	tTHX self;
 #endif
-	int threaded;
-#ifdef USE_ITHREADS
-	perl_mutex mutex;
-#endif
 	int utimens_as_array;
 } my_cxt_t;
 START_MY_CXT;
+
+// threaded can't be tracked in MY_CXT, because MY_CXT isn't thread-safe on perl < 5.10 and threaded is used to make threading decisions
+int threaded = 0;
 
 #ifdef FUSE_USE_ITHREADS
 typedef struct thx_cxt_t thx_cxt_t;
@@ -108,14 +102,14 @@ struct thx_cxt_t {
 };
 
 tTHX master_interp = NULL;
+perl_mutex master_lock;
 thx_cxt_t *cxt_stack = NULL;
 perl_mutex cxt_stack_lock;
 
 #define CLONE_INTERP(parent) S_clone_interp(parent)
 tTHX S_clone_interp(pTHX) {
-	dMY_CXT_INTERP(aTHX);
-	if(MY_CXT.threaded) {
-		MUTEX_LOCK(&MY_CXT.mutex);
+	if(threaded) {
+		MUTEX_LOCK(&master_lock);
 		PERL_SET_CONTEXT(aTHX);
 # if (PERL_VERSION < 10) || (PERL_VERSION == 10 && PERL_SUBVERSION < 1)
 		// perl pre-5.10.1 didn't retain the pointer table long enough for CLONE functions to work correctly (see commit b0b93b3 in perl-core)
@@ -125,14 +119,14 @@ tTHX S_clone_interp(pTHX) {
 # else
 		tTHX child = perl_clone(aTHX, CLONEf_CLONE_HOST);
 # endif
-		MUTEX_UNLOCK(&MY_CXT.mutex);
+		MUTEX_UNLOCK(&master_lock);
 		return child;
 	}
 	return NULL;
 }
 
-#define acqTHX S_acquire_THX()
-#define relTHX S_unlock_THX(S_find_THX(aTHX))
+#define acqTHX if(threaded) S_acquire_THX()
+#define relTHX if(threaded) S_unlock_THX(S_find_THX(aTHX))
 
 int S_lock_THX(thx_cxt_t *cxt) {
 	if(cxt) {
@@ -249,7 +243,7 @@ void S_fh_release_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi) {
 void S_fh_store_handle(pTHX_ pMY_CXT_ struct fuse_file_info *fi, SV *sv) {
 	if(SvOK(sv)) {
 #ifdef FUSE_USE_ITHREADS
-		if(MY_CXT.threaded) {
+		if(threaded) {
 			SvSHARE(sv);
 		}
 #endif
@@ -2274,18 +2268,18 @@ perl_fuse_main(...)
 	memset(&fops, 0, sizeof(struct fuse_operations));
 	CODE:
 	debug = SvIV(ST(0));
-	MY_CXT.threaded = SvIV(ST(1));
+	threaded = SvIV(ST(1));
 	MY_CXT.handles = (HV*)(sv_2mortal((SV*)(newHV())));
-	if(MY_CXT.threaded) {
+	if(threaded) {
 #ifdef FUSE_USE_ITHREADS
 		master_interp = aTHX;
-		MUTEX_INIT(&MY_CXT.mutex);
+		MUTEX_INIT(&master_lock);
 		SvSHARE((SV*)(MY_CXT.handles));
 #else
 		fprintf(stderr,"FUSE warning: Your script has requested multithreaded "
 		               "mode, but your perl was not built with a supported "
 		               "thread model. Threads are disabled.\n");
-		MY_CXT.threaded = 0;
+		threaded = 0;
 #endif
 	}
 	mountpoint = SvPV_nolen(ST(2));
@@ -2346,7 +2340,7 @@ perl_fuse_main(...)
 	if (fc == NULL)
 		croak("could not mount fuse filesystem!\n");
 #if !defined(USING_LIBREFUSE) && !defined(__OpenBSD__)
-	if(MY_CXT.threaded) {
+	if(threaded) {
 		fuse_loop_mt(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
 	} else
 #endif /* !defined(USING_LIBREFUSE) && !defined(__OpenBSD__) */
