@@ -755,6 +755,9 @@ int _PLfuse_flush (const char *file, struct fuse_file_info *fi) {
 int _PLfuse_release (const char *file, struct fuse_file_info *fi) {
 	int rv;
 	int flags = fi->flags;
+#if FUSE_VERSION >= 29 && !defined(PERL_HAS_64BITINT)
+	char *temp;
+#endif
 	FUSE_CONTEXT_PRE;
 	DEBUGf("release begin\n");
 	ENTER;

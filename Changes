@@ -1,5 +1,9 @@
 Revision history for Perl module Fuse
 
+0.16.1 2013-10-31
+	- Fix missing "temp" variable declaration in _PLfuse_release,
+	  which only affects 32-bit systems using FUSE 2.9.0 or later.
+
 0.16 2013-09-15
 	- Fix unbounded stack growth due to previous changes in getdir()
 	  and readdir() wrappers that didn't properly decrement SP.
