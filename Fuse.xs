@@ -1950,11 +1950,8 @@ CLONE(...)
 SV*
 fuse_get_context()
 	PREINIT:
-#ifndef __OpenBSD__
 	struct fuse_context *fc;
-#endif /* !defined(__OpenBSD__) */
 	CODE:
-#ifndef __OpenBSD__
 	fc = fuse_get_context();
 	if(fc) {
 		HV *hash = newHV();
@@ -1968,11 +1965,8 @@ fuse_get_context()
 #endif /* FUSE_VERSION >= 28 */
 		RETVAL = newRV_noinc((SV*)hash);
 	} else {
-#endif /* !defined(__OpenBSD__) */
 		XSRETURN_UNDEF;
-#ifndef __OpenBSD__
 	}
-#endif /* !defined(__OpenBSD__) */
 	OUTPUT:
 	RETVAL
 
