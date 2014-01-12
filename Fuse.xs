@@ -1182,7 +1182,7 @@ void _PLfuse_destroy(void *private_data) {
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
-	DEBUGf("init end\n");
+	DEBUGf("destroy end\n");
 	FUSE_CONTEXT_POST;
 }
 
