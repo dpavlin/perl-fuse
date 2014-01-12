@@ -1034,7 +1034,7 @@ int _PLfuse_readdir(const char *file, void *dirh, fuse_fill_dir_t dirfil,
 		/* Sort of a hack to walk the stack in order, instead of reverse
 		 * order - trying to explain to potential users why they need to
 		 * reverse the order of this array would be confusing, at best. */
-		while (swp <= &TOPs) {
+		while (swp <= SP) {
 			sv = *(swp++);
 			if (!SvROK(sv) && SvPOK(sv))
 			/* Just a bare SV (probably a string; hopefully a string) */
