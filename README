@@ -156,8 +156,6 @@ Now, you should be able to run 'make test'. Yes, there are some test
 failures. No, those actually aren't our fault. Here are some things
 you should know about the state of FUSE on OpenBSD:
 
- * You can't make anything other than plain files, directories and
-   symlinks right now. The kernel driver doesn't support it yet.
  * There is a bug if a file is created in the fuse filesystem and goes
    away, then you create another file of the same name via FUSE and
    try to do utime(). Not sure if it's just utime() or if other things
