@@ -169,10 +169,5 @@ you should know about the state of FUSE on OpenBSD:
  * You should probably implement all of chown(), chmod(), truncate(), and
    utime() and/or utimens(). The kernel driver will mask out future
    setattr() requests if it gets ENOSYS from ANY of these. Oops.
- * Oh, and don't interrupt the FUSE implementation while it's running.
-   If you do (or if it aborts for some reason), umount the mountpoint
-   ASAP. If you don't, and especially if you then try to mount the
-   filesystem on that mountpoint again, you can hang your kernel. Not
-   even kidding. I have done this.
 
 Anyway, happy FUSEing!
