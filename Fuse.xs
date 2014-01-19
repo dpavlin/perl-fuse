@@ -12,11 +12,6 @@
 # define XATTR_REPLACE 2
 #endif
 
-#ifdef __OpenBSD__
-#define FUSE_MAJOR_VERSION FUSE_FOUND_MAJOR_VER
-#define FUSE_MINOR_VERSION FUSE_FOUND_MINOR_VER
-#endif /* defined(__OpenBSD__) */
-
 #if defined(__linux__) || defined(__sun__)
 # define STAT_SEC(st, st_xtim) ((st)->st_xtim.tv_sec)
 # define STAT_NSEC(st, st_xtim) ((st)->st_xtim.tv_nsec)
