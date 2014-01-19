@@ -4,6 +4,9 @@
 #include "XSUB.h"
 
 #include <fuse.h>
+#ifdef __OpenBSD__
+# include <fuse_opt.h>
+#endif /* defined(__OpenBSD__) */
 
 #if defined(__linux__) || defined(__APPLE__)
 # include <sys/xattr.h>
@@ -2170,9 +2173,7 @@ perl_fuse_main(...)
 	int i, debug;
 	char *mountpoint;
 	char *mountopts;
-#ifndef __OpenBSD__
 	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
-#endif /* !defined(__OpenBSD__) */
 	struct fuse_chan *fc;
 	dMY_CXT;
 	INIT:
@@ -2233,7 +2234,6 @@ perl_fuse_main(...)
 	 * to hack on compatibility with other parts of the new API. First and
 	 * foremost, real C argc/argv would be good to get at...
 	 */
-#ifndef __OpenBSD__
 	if ((mountopts || debug) && fuse_opt_add_arg(&args, "") == -1) {
 		fuse_opt_free_args(&args);
 		croak("out of memory\n");
@@ -2249,9 +2249,6 @@ perl_fuse_main(...)
 		croak("out of memory\n");
 	}
 	fc = fuse_mount(mountpoint,&args);
-#else /* defined(__OpenBSD__) */
-	fc = fuse_mount(mountpoint,NULL);
-#endif /* !defined(__OpenBSD__) */
 	if (fc == NULL)
 		croak("could not mount fuse filesystem!\n");
 #if !defined(USING_LIBREFUSE) && !defined(__OpenBSD__)
@@ -2259,15 +2256,9 @@ perl_fuse_main(...)
 		fuse_loop_mt(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
 	} else
 #endif /* !defined(USING_LIBREFUSE) && !defined(__OpenBSD__) */
-#ifndef __OpenBSD__
 		fuse_loop(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
-#else /* defined(__OpenBSD__) */
-		fuse_loop(fuse_new(fc,NULL,&fops,sizeof(fops),NULL));
-#endif /* !defined(__OpenBSD__) */
 	fuse_unmount(mountpoint,fc);
-#ifndef __OpenBSD__
 	fuse_opt_free_args(&args);
-#endif /* !defined(__OpenBSD__) */
 
 #if FUSE_VERSION >= 28
 
