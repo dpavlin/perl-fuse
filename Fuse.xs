@@ -4,9 +4,6 @@
 #include "XSUB.h"
 
 #include <fuse.h>
-#ifdef __OpenBSD__
-# include <fuse_opt.h>
-#endif /* defined(__OpenBSD__) */
 
 #if defined(__linux__) || defined(__APPLE__)
 # include <sys/xattr.h>

@@ -161,11 +161,11 @@ you should know about the state of FUSE on OpenBSD:
    try to do utime(). Not sure if it's just utime() or if other things
    trip it too, but I discovered that via playing around. I *THINK*
    it's a vnode caching problem.
- * mknod() will not get called to create a plain file. You need to
-   implement create(), unless the OpenBSD devs fix libfuse to call
-   mknod() for plain files.
- * You should probably implement release(); the kernel driver whines
-   a lot about the ENOSYS if you don't.
+ * There is a known issue with readdir() when supplying numbered dirents
+   to support progressive readdir(). The developer is investigating.
+ * There is also a known issue with access() if all parent directories
+   of a path haven't been explicitly accessed first. Developer is also
+   investigating this.
  * You should probably implement all of chown(), chmod(), truncate(), and
    utime() and/or utimens(). The kernel driver will mask out future
    setattr() requests if it gets ENOSYS from ANY of these. Oops.
