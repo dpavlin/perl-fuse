@@ -67,6 +67,9 @@ unless ($fusever) {
             $explanation = 'Don\'t know how to enable FUSE support on this Solaris flavor';
         }
     }
+    elsif ($^O eq 'openbsd') {
+        $explanation = 'Please see README for information about OpenBSD FUSE support';
+    }
     else {
         $explanation = 'There is no FUSE support for your platform to our knowledge, sorry';
     }
