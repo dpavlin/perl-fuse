@@ -31,7 +31,7 @@ our %EXPORT_TAGS = (
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 our @EXPORT = ();
-our $VERSION = '0.16';
+our $VERSION = '0.16_1';
 
 sub AUTOLOAD {
     # This AUTOLOAD is used to 'autoload' constants from the constant()
@@ -74,21 +74,22 @@ use constant FUSE_IOCTL_MAX_IOV		=> 256;
 
 sub main {
 	my @names = qw(getattr readlink getdir mknod mkdir unlink rmdir symlink
-			rename link chmod chown truncate utime open read write statfs
-			flush release fsync setxattr getxattr listxattr removexattr
-			opendir readdir releasedir fsyncdir init destroy access
-			create ftruncate fgetattr lock utimens bmap);
+			rename link chmod chown truncate utime open read write
+			statfs flush release fsync setxattr getxattr listxattr
+			removexattr opendir readdir releasedir fsyncdir init
+			destroy access create ftruncate fgetattr lock utimens
+			bmap);
 	my ($fuse_vmajor, $fuse_vminor, $fuse_vmicro) = fuse_version();
 	my $fuse_version = $fuse_vmajor + ($fuse_vminor * 1.0 / 1_000) +
 		($fuse_vmicro * 1.0 / 1_000_000);
 	if ($fuse_version >= 2.008) {
 		# junk doesn't contain a function pointer, and hopefully
 		# never will; it's a "dead" zone in the struct
-		# fuse_operations where a flag bit is declared. we don't
+		# fuse_operations where flag bits are declared. we don't
 		# need to concern ourselves with it, and it appears any
 		# arch with a 64 bit pointer will align everything to
 		# 8 bytes, making the question of pointer alignment for
-		# the last 2 wrapper functions no big thing.
+		# the later wrapper functions no big thing.
 		push(@names, qw/junk ioctl poll/);
 	}
 	if ($fuse_version >= 2.009) {
@@ -100,7 +101,8 @@ sub main {
 	my @subs = map {undef} @names;
 	my $tmp = 0;
 	my %mapping = map { $_ => $tmp++ } @names;
-	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok utimens_as_array nopath utime_omit_ok);
+	my @otherargs = qw(debug threaded mountpoint mountopts nullpath_ok
+			utimens_as_array nopath utime_omit_ok);
 	my %otherargs = (
 			  debug			=> 0,
 			  threaded		=> 0,
