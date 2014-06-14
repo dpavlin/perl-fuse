@@ -93,11 +93,19 @@ typedef struct {
 } my_cxt_t;
 START_MY_CXT;
 
-#ifdef FUSE_USE_ITHREADS
-tTHX master_interp = NULL;
+/* Per-thread fuse private data */
 
-#define CLONE_INTERP(parent) S_clone_interp(parent)
-tTHX S_clone_interp(tTHX parent) {
+typedef struct {
+	tTHX self;
+	SV *user_private_data;
+} fuse_private_data_t;
+
+#ifdef FUSE_USE_ITHREADS
+
+#define CLONE_INTERP() S_clone_interp()
+tTHX S_clone_interp() {
+	fuse_private_data_t *private_data = fuse_get_context()->private_data;
+	tTHX parent = private_data->self;
 #  if (PERL_VERSION < 10)
 	tTHX my_perl = parent;
 #endif
@@ -119,7 +127,7 @@ tTHX S_clone_interp(tTHX parent) {
 	return NULL;
 }
 
-# define FUSE_CONTEXT_PRE dTHX; if(!aTHX) aTHX = CLONE_INTERP(master_interp); { dMY_CXT; dSP;
+# define FUSE_CONTEXT_PRE dTHX; if(!aTHX) aTHX = CLONE_INTERP(); { dMY_CXT; dSP;
 # define FUSE_CONTEXT_POST }
 #else
 # define FUSE_CONTEXT_PRE dTHX; dMY_CXT; dSP;
@@ -1163,17 +1171,18 @@ void *_PLfuse_init(struct fuse_conn_info *fc)
 }
 
 void _PLfuse_destroy(void *private_data) {
+	fuse_private_data_t *private = private_data;
 	FUSE_CONTEXT_PRE;
 	DEBUGf("destroy begin\n");
 	ENTER;
 	SAVETMPS;
 	PUSHMARK(SP);
-	XPUSHs(private_data ? (SV *)private_data : &PL_sv_undef);
+	XPUSHs(private->user_private_data);
 	PUTBACK;
 	call_sv(MY_CXT.callback[30], G_VOID);
 	SPAGAIN;
-	if (private_data)
-		SvREFCNT_dec((SV *)private_data);
+	SvREFCNT_dec(private->user_private_data);
+	Safefree(private);
 	FREETMPS;
 	LEAVE;
 	PUTBACK;
@@ -1946,15 +1955,17 @@ SV*
 fuse_get_context()
 	PREINIT:
 	struct fuse_context *fc;
+	fuse_private_data_t *private_data;
 	CODE:
 	fc = fuse_get_context();
+	private_data = fc->private_data;
 	if(fc) {
 		HV *hash = newHV();
 		(void) hv_store(hash, "uid",   3, newSViv(fc->uid), 0);
 		(void) hv_store(hash, "gid",   3, newSViv(fc->gid), 0);
 		(void) hv_store(hash, "pid",   3, newSViv(fc->pid), 0);
 		if (fc->private_data)
-			(void) hv_store(hash, "private", 7, fc->private_data, 0);
+			(void) hv_store(hash, "private", 7, private_data->user_private_data, 0);
 #if FUSE_VERSION >= 28
 		(void) hv_store(hash, "umask", 5, newSViv(fc->umask), 0);
 #endif /* FUSE_VERSION >= 28 */
@@ -2172,6 +2183,12 @@ perl_fuse_main(...)
 	char *mountopts;
 	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 	struct fuse_chan *fc;
+	fuse_private_data_t *private_data;
+	Newx(private_data, 1, fuse_private_data_t);
+#ifdef FUSE_USE_ITHREADS
+	private_data->self = aTHX;
+#endif
+	private_data->user_private_data = &PL_sv_undef;
 	dMY_CXT;
 	INIT:
 	if(items != N_CALLBACKS + N_FLAGS) {
@@ -2185,7 +2202,6 @@ perl_fuse_main(...)
 	MY_CXT.handles = (HV*)(sv_2mortal((SV*)(newHV())));
 	if(MY_CXT.threaded) {
 #ifdef FUSE_USE_ITHREADS
-		master_interp = aTHX;
 		MUTEX_INIT(&MY_CXT.mutex);
 		SvSHARE((SV*)(MY_CXT.handles));
 #else
@@ -2250,7 +2266,7 @@ perl_fuse_main(...)
 		croak("could not mount fuse filesystem!\n");
 #if !defined(USING_LIBREFUSE) && !defined(__OpenBSD__)
 	if(MY_CXT.threaded) {
-		fuse_loop_mt(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
+		fuse_loop_mt(fuse_new(fc,&args,&fops,sizeof(fops),private_data));
 	} else
 #endif /* !defined(USING_LIBREFUSE) && !defined(__OpenBSD__) */
 		fuse_loop(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
