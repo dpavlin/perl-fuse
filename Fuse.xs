@@ -2269,7 +2269,7 @@ perl_fuse_main(...)
 		fuse_loop_mt(fuse_new(fc,&args,&fops,sizeof(fops),private_data));
 	} else
 #endif /* !defined(USING_LIBREFUSE) && !defined(__OpenBSD__) */
-		fuse_loop(fuse_new(fc,&args,&fops,sizeof(fops),NULL));
+		fuse_loop(fuse_new(fc,&args,&fops,sizeof(fops),private_data));
 	fuse_unmount(mountpoint,fc);
 	fuse_opt_free_args(&args);
 
