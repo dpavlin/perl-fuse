@@ -2184,7 +2184,7 @@ perl_fuse_main(...)
 	struct fuse_args args = FUSE_ARGS_INIT(0, NULL);
 	struct fuse_chan *fc;
 	fuse_private_data_t *private_data;
-	Newx(private_data, 1, fuse_private_data_t);
+	Newx(private_data, sizeof *private_data, fuse_private_data_t);
 #ifdef FUSE_USE_ITHREADS
 	private_data->self = aTHX;
 #endif
