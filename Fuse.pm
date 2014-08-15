@@ -41,7 +41,7 @@ sub AUTOLOAD {
     my $constname;
     our $AUTOLOAD;
     ($constname = $AUTOLOAD) =~ s/.*:://;
-    croak "& not defined" if $constname eq 'constant';
+    croak '& not defined' if $constname eq 'constant';
     my $val = constant($constname, @_ ? $_[0] : 0);
     if ($! != 0) {
 	if ($!{EINVAL}) {
@@ -106,8 +106,8 @@ sub main {
 	my %otherargs = (
 			  debug			=> 0,
 			  threaded		=> 0,
-			  mountpoint		=> "",
-			  mountopts		=> "",
+			  mountpoint		=> '',
+			  mountopts		=> '',
 			  nullpath_ok		=> 0,
 			  utimens_as_array	=> 0,
 			  nopath		=> 0,
@@ -118,7 +118,7 @@ sub main {
 		if(exists($otherargs{$name})) {
 			$otherargs{$name} = $subref;
 		} else {
-			croak "Usage: Fuse::main(getattr => \"main::my_getattr\", ...)" unless $subref;
+			croak 'Usage: Fuse::main(getattr => "main::my_getattr", ...)' unless $subref;
 			if (exists $mapping{$name}) {
 				$subs[$mapping{$name}] = $subref;
 			}
@@ -298,9 +298,9 @@ Only effective on Fuse 2.9 and up.
 =head3 Fuse::fuse_get_context
  
  use Fuse "fuse_get_context";
- my $caller_uid = fuse_get_context()->{"uid"};
- my $caller_gid = fuse_get_context()->{"gid"};
- my $caller_pid = fuse_get_context()->{"pid"};
+ my $caller_uid = fuse_get_context()->{uid};
+ my $caller_gid = fuse_get_context()->{gid};
+ my $caller_pid = fuse_get_context()->{pid};
  
 Access context information about the current Fuse operation. 
 
