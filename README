@@ -121,16 +121,30 @@ usermod -G wheel <your username here>
 NOTES FOR OPENBSD IN PARTICULAR
 
 Oh, hello. You're an OpenBSD user. You like your secure, minimalist OS, but
-you really want in on that FUSE-y goodness. Well, it's still pretty early
-and kind of broken, but yes, FUSE has actually made its way onto OpenBSD.
+you really want in on that FUSE-y goodness. Well, it still has some known
+issues, but yes, FUSE has actually made its way onto OpenBSD.
 
 As of this writing, OpenBSD 5.5 has been released, which includes a
 BSD-licensed reimplementation of libfuse, and their own fuse kernel
 driver. It is available at better OpenBSD mirrors everywhere.
 
+Keep in mind that if you want thread support (some Fuse filesystems do
+require it), the Perl build in OpenBSD 5.5 base does *not* support threads.
+Assuming you're not an OpenBSD ninja (or completely insane), I don't
+recommend trying to build your own and install it over the system Perl,
+because that can have bad repercussions. Use perlbrew if you want a
+threaded Perl; you should run:
+
+  perlbrew install perl-<version> -Dusethreads \
+    --as perl-<version>_WITH_THREADS
+
+if you're into that sort of thing.
+
 For the tests, I recommend installing devel/p5-Lchown,
 devel/p5-Filesys-Statvfs, devel/p5-Unix-Mknod and devel/p5-Test-Pod from
-OpenBSD ports.
+OpenBSD ports. (Or use the 'cpan' command from your Perlbrew-installed
+version to install those modules, if you want thread support like I was
+talking about above.)
 
 Now, in your perl-fuse distribution, run:
 
@@ -143,9 +157,10 @@ filesystem as non-root, run the following (as root):
 sysctl kern.usermount=1
 chmod 0660 /dev/fuse0
 
-Now, you should be able to run 'make test'. Yes, there are some test
+Now, you should be able to run 'make test'. Yes, there are a few test
 failures. No, those actually aren't our fault. Here are some things
-you should know about the state of FUSE on OpenBSD:
+you should know about the state of FUSE on OpenBSD (the developer,
+Sylvestre Gallon, has been made aware of these):
 
  * There is a bug if a file is created in the fuse filesystem and goes
    away, then you create another file of the same name via FUSE and
@@ -153,10 +168,9 @@ you should know about the state of FUSE on OpenBSD:
    trip it too, but I discovered that via playing around. I *THINK*
    it's a vnode caching problem.
  * There is also a known issue with access() if all parent directories
-   of a path haven't been explicitly accessed first. Developer is also
-   investigating this.
+   of a path haven't been explicitly accessed first.
  * There is a known issue with readdir() when supplying numbered dirents
-   to support progressive readdir(). The developer is investigating.
+   to support progressive readdir().
  * You should probably implement all of chown(), chmod(), truncate(), and
    utime() and/or utimens(). The kernel driver will mask out future
    setattr() requests if it gets ENOSYS from ANY of these. Oops.
