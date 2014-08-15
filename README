@@ -124,22 +124,13 @@ Oh, hello. You're an OpenBSD user. You like your secure, minimalist OS, but
 you really want in on that FUSE-y goodness. Well, it's still pretty early
 and kind of broken, but yes, FUSE has actually made its way onto OpenBSD.
 
-That said, it's not (as of this writing) in a released version. It is
-in OpenBSD -current; you probably shouldn't be running a production system
-with -current, but a VM can be readily installed from the -current ISOs,
-available from better OpenBSD mirrors near you.
+As of this writing, OpenBSD 5.5 has been released, which includes a
+BSD-licensed reimplementation of libfuse, and their own fuse kernel
+driver. It is available at better OpenBSD mirrors everywhere.
 
-If you're going to upgrade an existing install to -current, you should be
-familiar with building a kernel, and your entire userspace; if not, read
-the OpenBSD FAQ for more info.
-
-For the tests, I recommend installing devel/p5-Lchown, and installing
-Filesys::Statvfs, Unix::Mknod and Test::Pod out of CPAN.
-
-Okay, once you've done all that, run (as root):
-
-cd /dev
-./MAKEDEV fuse
+For the tests, I recommend installing devel/p5-Lchown,
+devel/p5-Filesys-Statvfs, devel/p5-Unix-Mknod and devel/p5-Test-Pod from
+OpenBSD ports.
 
 Now, in your perl-fuse distribution, run:
 
@@ -161,11 +152,11 @@ you should know about the state of FUSE on OpenBSD:
    try to do utime(). Not sure if it's just utime() or if other things
    trip it too, but I discovered that via playing around. I *THINK*
    it's a vnode caching problem.
- * There is a known issue with readdir() when supplying numbered dirents
-   to support progressive readdir(). The developer is investigating.
  * There is also a known issue with access() if all parent directories
    of a path haven't been explicitly accessed first. Developer is also
    investigating this.
+ * There is a known issue with readdir() when supplying numbered dirents
+   to support progressive readdir(). The developer is investigating.
  * You should probably implement all of chown(), chmod(), truncate(), and
    utime() and/or utimens(). The kernel driver will mask out future
    setattr() requests if it gets ENOSYS from ANY of these. Oops.

@@ -101,6 +101,13 @@ $def .= ' -DUSING_LIBREFUSE' if $libs =~ m{-lrefuse\b};
 # nothing in the headers that supplies it, so I'm gonna ghetto this
 # up.
 my ($major, $minor, $micro) = split(m{\.}, $fusever);
+if ($^O eq 'openbsd') {
+    # Note: This is a hack. Unfortunately OpenBSD's FUSE lies in its
+    # pkgconfig and claims to be FUSE 2.8, when it only supplies the
+    # FUSE 2.6 API. This breaks the module, so I'm going to work around
+    # that for now...
+    $minor = 6;
+}
 if (!defined $micro) {
     $micro = 0;
 }
