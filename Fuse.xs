@@ -239,13 +239,13 @@ int _PLfuse_readlink(const char *file,char *buf,size_t buflen) {
 		if(SvTYPE(mysv) == SVt_IV || SvTYPE(mysv) == SVt_NV)
 			rv = SvIV(mysv);
 		else {
-			strncpy(buf,SvPV_nolen(mysv),buflen);
+			/* as a safer choice instead of strncpy()... */
+			snprintf(buf, buflen, "%s", SvPV_nolen(mysv));
 			rv = 0;
 		}
 	}
 	FREETMPS;
 	LEAVE;
-	buf[buflen-1] = 0;
 	PUTBACK;
 	DEBUGf("readlink end: %i\n",rv);
 	FUSE_CONTEXT_POST;
