@@ -4,7 +4,7 @@ Fuse.pm
 Fuse.xs
 Makefile.PL
 MANIFEST
-README
+README.md
 test.pl
 META.yml                                 Module meta-data (added by MakeMaker)
 test/helper.pm
