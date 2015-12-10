@@ -166,22 +166,36 @@ Fuse - write filesystems in Perl using FUSE
 =head1 SYNOPSIS
 
   use Fuse;
-  my ($mountpoint) = "";
-  $mountpoint = shift(@ARGV) if @ARGV;
-  Fuse::main(mountpoint=>$mountpoint, getattr=>"main::my_getattr", getdir=>"main::my_getdir", ...);
+
+  Fuse::main(
+      mountpoint => '/mnt/my_fs',
+      threaded   => 0,
+      debug      => 1,
+
+      getattr    => sub { ... }, # fetches attributes, like 'stat'
+      getdir     => sub { ... }, # obtains directory listings
+      open       => sub { ... }, # opens files
+      statfs     => sub { ... }, # returns filesystem data
+      read       => sub { ... }, # reads file contents
+
+      # there are many more you can implement!
+      # See "FUNCTIONS YOUR FILESYSTEM MAY IMPLEMENT" below.
+  );
 
 =head1 DESCRIPTION
 
-This lets you implement filesystems in perl, through the FUSE
-(Filesystem in USErspace) kernel/lib interface.
+This module lets you implement filesystems in Perl, through the
+L<FUSE|http://fuse.sourceforge.net> (Filesystem in USErspace)
+kernel/lib interface.
 
 FUSE expects you to implement callbacks for the various functions.
 
 In the following definitions, "errno" can be 0 (for a success),
 -EINVAL, -ENOENT, -EONFIRE, any integer less than 1 really.
 
-You can import standard error constants by saying something like
-"use POSIX qw(EDOTDOT ENOANO);".
+You can import standard error constants by saying something like:
+
+    use POSIX qw(EDOTDOT ENOANO);
 
 Every constant you need (file types, open() flags, error values,
 etc) can be imported either from POSIX or from Fcntl, often both.
@@ -297,7 +311,8 @@ Only effective on Fuse 2.9 and up.
 
 =head3 Fuse::fuse_get_context
  
- use Fuse "fuse_get_context";
+ use Fuse 'fuse_get_context';
+
  my $caller_uid = fuse_get_context()->{uid};
  my $caller_gid = fuse_get_context()->{gid};
  my $caller_pid = fuse_get_context()->{pid};
@@ -372,9 +387,10 @@ in an example script, which consistently caused segfaults.
 
 Fields (the following was stolen from perlfunc(1) with apologies):
 
-($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
-        $atime,$mtime,$ctime,$blksize,$blocks)
-                         = getattr($filename);
+    (
+     $dev, $ino, $mode, $nlink, $uid, $gid, $rdev, $size,
+     $atime, $mtime, $ctime, $blksize, $blocks
+    ) = getattr($filename);
 
 Here are the meaning of the fields:
 
@@ -865,28 +881,38 @@ the file system media.
 
 There are a few example scripts in the examples/ subdirectory.  These are:
 
-example.pl
+=over 4
 
+=item example.pl
 	A simple "Hello world" type of script
 
-loopback.pl
-
+=item loopback.pl
 	A filesystem loopback-device.  like fusexmp from the main FUSE dist,
 	it simply recurses file operations into the real filesystem.  Unlike
 	fusexmp, it only re-shares files under the /tmp/test directory.
 
-rmount.pl
-
+=item rmount.pl
 	An NFS-workalike which tunnels through SSH. It requires an account
-	on some ssh server (obviously), with public-key authentication enabled.
-	(if you have to type in a password, you don't have this. man ssh_keygen.).
-	Copy rmount_remote.pl to your home directory on the remote machine
-	and make it executable. Then create a mountpoint subdir somewhere local,
-	and run the example script: ./rmount.pl host /remote/dir /local/dir
+    on some ssh server (obviously) with public-key
+    authentication enabled (if you have to type in a password,
+    you don't have this. See *man ssh_keygen* for more information).
+    Copy rmount_remote.pl to your home directory on the remote
+    machine, and create a subdir somewhere, and then run it like:
+    ./rmount.pl host /remote/dir /local/dir
 
-rmount_remote.pl
-
+=item rmount_remote.pl
 	A ripoff of loopback.pl meant to be used as a backend for rmount.pl.
+
+=back
+
+=head1 THE "FUSE" NAMESPACE
+
+Additional filesystems using Fuse are released on CPAN under
+L<the Fuse:: namespace|https://metacpan.org/search?q=FUSE>.
+It includes modules like L<Fuse::DBI> which allows
+you to mount database as file system, and L<Fuse::PDF>, a filesystem
+embedded in a PDF document.
+
 
 =head1 AUTHOR
 
@@ -894,6 +920,6 @@ Mark Glines, E<lt>mark@glines.orgE<gt>
 
 =head1 SEE ALSO
 
-L<perl>, the FUSE documentation.
+L<perl>, the L<FUSE documentation|http://fuse.sourceforge.net>.
 
 =cut
