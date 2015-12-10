@@ -1,4 +1,5 @@
 use ExtUtils::MakeMaker;
+use File::Spec;
 use POSIX;
 use Config;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
@@ -27,7 +28,58 @@ sub test_via_script {
 
 package main;
 
-chomp(my $fusever = `pkg-config --modversion fuse 2> /dev/null`);
+# 'can_run' courtesy of Module::Install
+sub can_run {
+    my ($cmd) = @_;
+
+    my $_cmd = $cmd;
+    return $_cmd if (-x $_cmd or $_cmd = MM->maybe_command($_cmd));
+
+    for my $dir ((split /$Config::Config{path_sep}/, $ENV{PATH}), '.') {
+        next if $dir eq '';
+        my $abs = File::Spec->catfile($dir, $cmd);
+        return $abs if (-x $abs or $abs = MM->maybe_command($abs));
+    }
+    return;
+}
+
+# Fix Cygwin bug on maybe_command() - also courtesy of Module::Install;
+if ( $^O eq 'cygwin' ) {
+    require ExtUtils::MM_Cygwin;
+    require ExtUtils::MM_Win32;
+    if ( ! defined(&ExtUtils::MM_Cygwin::maybe_command) ) {
+        *ExtUtils::MM_Cygwin::maybe_command = sub {
+            my ($self, $file) = @_;
+            if ($file =~ m{^/cygdrive/}i and ExtUtils::MM_Win32->can('maybe_command')) {
+                    ExtUtils::MM_Win32->maybe_command($file);
+            } else {
+                    ExtUtils::MM_Unix->maybe_command($file);
+            }
+        }
+    }
+}
+
+my $command;
+if ( can_run('pkg-config') ) {
+    $command = 'pkg-config';
+}
+elsif ( can_run('ppkg-config') ) {
+    # we use flags that are only available after 0.08626
+    my $pkg_version = `ppkg-config --real-version`;
+    if ($pkg_version =~ /Version: (\d+\.\d+)/) {
+        if ($1 >= 0.08626) {
+            $command = 'ppkg-config';
+        }
+        else {
+            die "Outdated PkgConfig ($1). Please upgrade to 0.08626 or later.\n";
+        }
+    }
+}
+else {
+    die "Cannot build. Please install pkg-config or the PkgConfig perl module before continuing.\n";
+}
+
+chomp(my $fusever = `$command --modversion fuse 2> /dev/null`);
 # Required for refuse on NetBSD
 if (!$fusever && $^O eq 'netbsd') {
     chomp($fusever = `fusermount -V`);
@@ -55,7 +107,7 @@ unless ($fusever) {
         $explanation = 'Could not find librefuse? Maybe install "perfuse" from pkgsrc, or upgrade to newer NetBSD';
     }
     elsif ($^O eq 'darwin') {
-        $explanation = 'Please install OSXFUSE from http://osxfuse.github.com/';
+        $explanation = 'Please install OSXFUSE from http://osxfuse.github.com/ or via homebrew (brew install osxfuse)';
     }
     elsif ($^O eq 'solaris') {
         open(my $motd, '<', '/etc/motd');
@@ -81,10 +133,10 @@ if ($fusever && $fusever + 0 < 2.6) {
     warn "fuse version found: ", $fusever, "\n";
 }
 
-chomp(my $inc = `pkg-config --cflags-only-I fuse 2> /dev/null`);
-chomp(my $libs = `pkg-config --libs-only-L fuse 2> /dev/null`);
+chomp(my $inc = `$command --cflags-only-I fuse 2> /dev/null`);
+chomp(my $libs = `$command --libs-only-L fuse 2> /dev/null`);
 $libs .= ' ';
-chomp($libs .= `pkg-config --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse'));
+chomp($libs .= `$command --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse'));
 # Needed for Fuse on OS X 10.6, due to 10.6 and up always using the 64-bit
 # inode structs; unfortunately MacFuse doesn't just do the right thing
 # on its own. (Not applicable for OSXFUSE; it uses a new SONAME, so we
@@ -92,8 +144,8 @@ chomp($libs .= `pkg-config --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd'
 if ($^O eq 'darwin' && (uname())[2] =~ /^1[01]\./) {
     $libs =~ s/-lfuse\b/-lfuse_ino64/;
 }
-chomp(my $def = '-Wall -DFUSE_USE_VERSION=26 ' . `pkg-config --cflags-only-other fuse 2> /dev/null` || '-D_FILE_OFFSET_BITS=64');
-chomp($def .= `pkg-config --libs-only-other fuse 2> /dev/null`);
+chomp(my $def = '-Wall -DFUSE_USE_VERSION=26 ' . `$command --cflags-only-other fuse 2> /dev/null` || '-D_FILE_OFFSET_BITS=64');
+chomp($def .= `$command --libs-only-other fuse 2> /dev/null`);
 $def .= ' -DPERL_HAS_64BITINT' if $Config{'use64bitint'};
 $def .= ' -DUSING_LIBREFUSE' if $libs =~ m{-lrefuse\b};
 
