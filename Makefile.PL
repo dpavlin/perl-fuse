@@ -83,6 +83,7 @@ if ($fusever && $fusever + 0 < 2.6) {
 
 chomp(my $inc = `pkg-config --cflags-only-I fuse 2> /dev/null`);
 chomp(my $libs = `pkg-config --libs-only-L fuse 2> /dev/null`);
+$libs .= ' ';
 chomp($libs .= `pkg-config --libs-only-l fuse 2> /dev/null` || (($^O eq 'netbsd') ? '-lrefuse' : '-lfuse'));
 # Needed for Fuse on OS X 10.6, due to 10.6 and up always using the 64-bit
 # inode structs; unfortunately MacFuse doesn't just do the right thing
