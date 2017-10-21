@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use lib 'test/lib';
 use test::helper qw($_real $_point);
 use Test::More;
 my (@names) = qw(abc def ghi jkl mno pqr stu jlk sfdaljk  sdfakjlsdfa kjldsf kjl;sdf akjl;asdf klj;asdf lkjsdflkjsdfkjlsdfakjsdfakjlsadfkjl;asdfklj;asdfkjl;asdfklj;asdfkjl;asdfkjlasdflkj;sadf);
