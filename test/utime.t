@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use lib 'test/lib';
 use test::helper qw($_real $_point);
 use Test::More;
 plan tests => 3;

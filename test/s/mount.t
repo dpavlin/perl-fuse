@@ -1,4 +1,5 @@
 #!/usr/bin/perl -w
+use lib 'test/lib';
 use test::helper qw($_point $_loop $_opts $_real $_pidfile $_logfile);
 use strict;
 use Errno qw(:POSIX);

@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use lib 'test/lib';
 use test::helper qw($_point $_real $_pidfile);
 use strict;
 use Test::More tests => 1;
